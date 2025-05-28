@@ -1,0 +1,207 @@
+/* Home screen - Menu principal */
+.main-menu {
+    display: flex;
+    gap: 80px;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.menu-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 240px;
+    height: 240px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: transform 0.6s ease;
+}
+
+.menu-item:hover::before {
+    transform: translateX(100%) skewX(-15deg);
+}
+
+.menu-item:hover,
+.menu-item:focus {
+    transform: translateY(-15px) scale(1.05);
+    border-color: #00d4ff;
+    box-shadow: 
+        0 25px 50px rgba(0, 212, 255, 0.2),
+        0 0 0 1px rgba(0, 212, 255, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.1), rgba(0, 150, 200, 0.05));
+}
+
+.menu-icon {
+    font-size: 56px;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.3));
+    transition: all 0.3s ease;
+}
+
+.menu-item:hover .menu-icon {
+    filter: drop-shadow(0 0 25px rgba(0, 212, 255, 0.6));
+    transform: scale(1.1);
+}
+
+.menu-text {
+    font-size: 20px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Power options */
+.power-options {
+    display: flex;
+    gap: 80px;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.power-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(20px);
+    position: relative;
+    overflow: hidden;
+}
+
+.power-option::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: transform 0.6s ease;
+}
+
+.power-option:hover::before {
+    transform: translateX(100%) skewX(-15deg);
+}
+
+.power-option:hover {
+    transform: translateY(-12px) scale(1.05);
+    border-color: #ff4757;
+    box-shadow: 
+        0 25px 50px rgba(255, 71, 87, 0.2),
+        0 0 0 1px rgba(255, 71, 87, 0.3);
+    background: linear-gradient(145deg, rgba(255, 71, 87, 0.1), rgba(255, 71, 87, 0.05));
+}
+
+.power-icon {
+    font-size: 52px;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 15px rgba(255, 71, 87, 0.3));
+}
+
+.power-option:hover .power-icon {
+    filter: drop-shadow(0 0 25px rgba(255, 71, 87, 0.6));
+    transform: scale(1.1);
+}
+
+.power-text {
+    font-size: 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Focus states específicos da homescreen */
+.menu-item:focus,
+.power-option:focus {
+    outline: 2px solid #00d4ff;
+    outline-offset: 6px;
+}
+
+/* Responsividade da homescreen */
+@media (max-width: 1400px) {
+    .main-menu {
+        gap: 60px;
+    }
+    
+    .menu-item {
+        width: 200px;
+        height: 200px;
+    }
+    
+    .power-options {
+        gap: 60px;
+    }
+    
+    .power-option {
+        width: 170px;
+        height: 170px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .main-menu {
+        gap: 40px;
+    }
+    
+    .menu-item {
+        width: 170px;
+        height: 170px;
+    }
+    
+    .menu-icon {
+        font-size: 48px;
+    }
+    
+    .menu-text {
+        font-size: 16px;
+    }
+}
+
+/* High contrast mode para homescreen */
+@media (prefers-contrast: high) {
+    .menu-item,
+    .power-option {
+        border-width: 2px;
+    }
+}

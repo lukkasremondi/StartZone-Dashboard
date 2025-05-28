@@ -1,0 +1,127 @@
+ 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StartZone</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+    <header id="system-header">
+        <div class="system-info">
+            <div class="info-group">
+                <span class="info-label">CPU:</span>
+                <span id="cpu-temp">--°C</span>
+                <span id="cpu-usage">--%</span>
+            </div>
+            <div class="info-group">
+                <span class="info-label">GPU:</span>
+                <span id="gpu-temp">--°C</span>
+            </div>
+            <div class="info-group">
+                <span class="info-label">RAM:</span>
+                <span id="ram-usage">-- / --GB</span>
+            </div>
+            <div class="info-group">
+                <span class="info-label">Rede:</span>
+                <span id="network-status">--</span>
+            </div>
+            <div class="info-group">
+                <span class="info-label">Volume:</span>
+                <span id="audio-volume">--%</span>
+            </div>
+        </div>
+        <div class="datetime-info">
+            <div id="current-time">--:--</div>
+            <div id="current-date">-- / -- / ----</div>
+        </div>
+    </header>
+
+    <main id="main-content">
+        <div id="home-screen" class="screen active">
+            <div class="main-menu">
+                <div class="menu-item" id="games-option" tabindex="0">
+                    <div class="menu-icon">🎮</div>
+                    <div class="menu-text">Jogos</div>
+                </div>
+                <div class="menu-item" id="programs-option" tabindex="1">
+                    <div class="menu-icon">💻</div>
+                    <div class="menu-text">Programas</div>
+                </div>
+                <div class="menu-item" id="shutdown-option" tabindex="2">
+                    <div class="menu-icon">⚡</div>
+                    <div class="menu-text">Desligar</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="games-screen" class="screen">
+            <div class="screen-header">
+                <h1>Jogos Disponíveis</h1>
+                <div class="back-button" id="games-back">← Voltar</div>
+            </div>
+            <div class="content-grid" id="games-grid">
+                <div class="loading">Carregando jogos...</div>
+            </div>
+        </div>
+
+        <div id="programs-screen" class="screen">
+            <div class="screen-header">
+                <h1>Programas Instalados</h1>
+                <div class="back-button" id="programs-back">← Voltar</div>
+            </div>
+            <div class="content-grid" id="programs-grid">
+                <div class="loading">Carregando programas...</div>
+            </div>
+        </div>
+
+        <div id="shutdown-screen" class="screen">
+            <div class="screen-header">
+                <h1>Opções de Energia</h1>
+                <div class="back-button" id="shutdown-back">← Voltar</div>
+            </div>
+            <div class="power-options">
+                <div class="power-option" id="shutdown-pc">
+                    <div class="power-icon">🔴</div>
+                    <div class="power-text">Desligar PC</div>
+                </div>
+                <div class="power-option" id="restart-pc">
+                    <div class="power-icon">🔄</div>
+                    <div class="power-text">Reiniciar PC</div>
+                </div>
+                <div class="power-option" id="minimize-app">
+                    <div class="power-icon">📱</div>
+                    <div class="power-text">Minimizar</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer id="system-footer">
+        <div class="version-info">
+            <span>StartZone v1.0.0</span>
+        </div>
+        <div class="storage-info" id="storage-info">
+        </div>
+        <div class="exit-button" id="exit-app" tabindex="999">
+            Sair
+        </div>
+    </footer>
+
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Carregando...</div>
+    </div>
+
+
+    <div id="notification-container"></div>
+
+
+    <script src="js/programs.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/gamepad.js"></script>
+    <script src="js/navigation.js"></script>
+</body>
+</html>

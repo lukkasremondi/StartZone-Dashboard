@@ -1,0 +1,756 @@
+/* ========================================
+   PROGRAMAS - CONTROLES E LAYOUT
+   ======================================== */
+
+/* Controles dos programas - Layout melhorado */
+.programs-controls {
+    position: absolute;
+    top: 90px;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(20, 25, 50, 0.5) 100%);
+    backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 25px 50px;
+    z-index: 100;
+}
+
+.programs-filters {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    flex-wrap: wrap;
+}
+
+/* ========================================
+   GRID DE PROGRAMAS - LAYOUT PRINCIPAL
+   ======================================== */
+
+/* Container principal da grid de programas */
+.programs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    padding: 30px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-top: 0;
+    overflow-y: auto;
+    height: calc(100vh - 200px);
+}
+
+/* Itens individuais de programa */
+.program-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 15px 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    min-height: 120px;
+    max-height: 140px;
+    text-align: center;
+    width: 100%;
+}
+
+.program-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.05) 50%, transparent 70%);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: transform 0.6s ease;
+}
+
+.program-item:hover::before {
+    transform: translateX(100%) skewX(-15deg);
+}
+
+.program-item:hover,
+.program-item:focus {
+    transform: translateY(-6px) scale(1.03);
+    border-color: #00d4ff;
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.15), rgba(0, 150, 200, 0.08));
+    box-shadow: 
+        0 15px 35px rgba(0, 212, 255, 0.25),
+        0 0 0 2px rgba(0, 212, 255, 0.2);
+    outline: none;
+}
+
+/* Ícone do programa */
+.program-icon-only {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    font-size: 28px;
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.program-icon-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.program-icon-fallback {
+    font-size: 26px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.program-item:hover .program-icon-only,
+.program-item:focus .program-icon-only {
+    transform: scale(1.1);
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 200, 0.1));
+    border-color: rgba(0, 212, 255, 0.3);
+}
+
+/* Nome do programa */
+.program-name-only {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    text-align: center;
+    line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-width: 100%;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.program-item:hover .program-name-only,
+.program-item:focus .program-name-only {
+    color: #00d4ff;
+    text-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+/* ========================================
+   INPUTS E CONTROLES DE BUSCA
+   ======================================== */
+
+/* Input de busca estilizado */
+.search-input {
+    flex: 1;
+    min-width: 300px;
+    padding: 14px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.08);
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.2);
+}
+
+/* Select de ordenação */
+.sort-select {
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 180px;
+}
+
+.sort-select:focus {
+    outline: none;
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.08);
+}
+
+.sort-select option {
+    background: #1a1d3a;
+    color: #ffffff;
+    padding: 10px;
+}
+
+/* Contador de programas */
+.programs-count {
+    display: flex;
+    align-items: center;
+    padding: 12px 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #00d4ff;
+    min-width: 120px;
+    justify-content: center;
+}
+
+/* ========================================
+   BOTÃO DE FILTRO PRINCIPAL
+   ======================================== */
+
+/* Botão de filtro principal - estilo console */
+#filter-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 20px;
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.1), rgba(0, 150, 200, 0.05));
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 16px;
+    font-weight: 600;
+    color: #00d4ff;
+    min-width: 140px;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+#filter-toggle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: transform 0.6s ease;
+}
+
+#filter-toggle:hover::before,
+#filter-toggle:focus::before {
+    transform: translateX(100%) skewX(-15deg);
+}
+
+#filter-toggle:hover,
+#filter-toggle:focus {
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 200, 0.1));
+    border-color: #00d4ff;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+        0 8px 25px rgba(0, 212, 255, 0.3),
+        0 0 0 1px rgba(0, 212, 255, 0.2);
+    outline: none;
+}
+
+#filter-toggle .filter-icon {
+    font-size: 18px;
+}
+
+#filter-toggle .filter-text {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ========================================
+   CATEGORIAS E FILTROS
+   ======================================== */
+
+/* Container de categorias - estilo horizontal */
+.programs-categories {
+    display: none;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.programs-categories.show {
+    display: flex;
+    animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Filtros de categoria - estilo console/gaming */
+.category-filter {
+    padding: 12px 20px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+    min-width: 100px;
+    text-align: center;
+}
+
+.category-filter::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    transform: translateX(-100%) skewX(-15deg);
+    transition: transform 0.6s ease;
+}
+
+.category-filter:hover::before {
+    transform: translateX(100%) skewX(-15deg);
+}
+
+.category-filter:hover,
+.category-filter:focus {
+    transform: translateY(-3px) scale(1.05);
+    border-color: #00d4ff;
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.15), rgba(0, 150, 200, 0.08));
+    box-shadow: 
+        0 8px 20px rgba(0, 212, 255, 0.2),
+        0 0 0 1px rgba(0, 212, 255, 0.3);
+    color: #00d4ff;
+    outline: none;
+}
+
+.category-filter.active {
+    background: linear-gradient(145deg, #00d4ff, #0099cc);
+    border-color: #00d4ff;
+    color: #000000;
+    font-weight: 700;
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 15px rgba(0, 212, 255, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.category-filter.active:hover {
+    background: linear-gradient(145deg, #00b8e6, #0088bb);
+    transform: translateY(-4px) scale(1.05);
+}
+
+/* Sobreposição para categoria ativa */
+.category-filter.active {
+    background-color: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
+}
+
+/* ========================================
+   ESTADOS DE CARREGAMENTO E ERRO
+   ======================================== */
+
+/* Estados de loading/erro nos programas */
+.programs-loading,
+.programs-error,
+.no-programs-found {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    color: #9ca3af;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 300px;
+}
+
+.programs-loading .loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(0, 212, 255, 0.2);
+    border-top: 4px solid #00d4ff;
+    border-radius: 50%;
+    margin-bottom: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-message,
+.error-message,
+.no-programs-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 10px;
+}
+
+.no-programs-subtitle {
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.no-programs-icon,
+.error-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.retry-button {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.1), rgba(0, 150, 200, 0.05));
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    border-radius: 12px;
+    color: #00d4ff;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.retry-button:hover {
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.2), rgba(0, 150, 200, 0.1));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.2);
+}
+
+/* ========================================
+   FOCO E NAVEGAÇÃO POR GAMEPAD
+   ======================================== */
+
+/* Foco para itens de programa */
+.program-item:focus {
+    outline: 3px solid #00d4ff;
+    outline-offset: 3px;
+    z-index: 10;
+}
+
+.category-filter:focus {
+    transform: scale(1.1);
+    transition: transform 0.1s ease;
+}
+
+/* Indicador de foco para gamepad */
+:focus::after {
+    content: "➤";
+    position: absolute;
+    right: 5px;
+    top: 5px;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* ========================================
+   AJUSTES DE LAYOUT
+   ======================================== */
+
+/* Ajustar grid para compensar espaço dos controles */
+.content-grid {
+    top: 180px; /* Aumentado para dar espaço aos controles */
+}
+
+/* ========================================
+   RESPONSIVIDADE
+   ======================================== */
+
+/* Responsividade específica para telas 4K e ultrawide */
+@media (min-width: 2560px) {
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 30px;
+        padding: 40px;
+    }
+    
+    .program-item {
+        min-height: 150px;
+        max-height: 170px;
+        padding: 20px 15px;
+    }
+    
+    .program-icon-only {
+        width: 65px;
+        height: 65px;
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+    
+    .program-icon-img {
+        width: 52px;
+        height: 52px;
+    }
+    
+    .program-name-only {
+        font-size: 15px;
+    }
+}
+
+/* Responsividade para telas 1080p e 1440p */
+@media (min-width: 1920px) and (max-width: 2559px) {
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+        gap: 22px;
+        padding: 35px;
+    }
+    
+    .program-item {
+        min-height: 130px;
+        max-height: 150px;
+        padding: 18px 15px;
+    }
+    
+    .program-icon-only {
+        width: 55px;
+        height: 55px;
+        font-size: 30px;
+        margin-bottom: 12px;
+    }
+    
+    .program-icon-img {
+        width: 44px;
+        height: 44px;
+    }
+    
+    .program-name-only {
+        font-size: 14px;
+    }
+}
+
+/* Responsividade para controles em telas médias */
+@media (min-width: 1400px) and (max-width: 1919px) {
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 20px;
+        padding: 30px;
+    }
+    
+    .program-item {
+        min-height: 120px;
+        max-height: 140px;
+        padding: 15px 12px;
+    }
+    
+    .program-icon-only {
+        width: 50px;
+        height: 50px;
+        font-size: 28px;
+        margin-bottom: 10px;
+    }
+    
+    .program-icon-img {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .program-name-only {
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 1399px) {
+    .programs-filters {
+        gap: 20px;
+    }
+    
+    .search-input {
+        min-width: 250px;
+    }
+    
+    .category-filter {
+        min-width: 90px;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+    
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 18px;
+        padding: 25px;
+    }
+    
+    .program-item {
+        min-height: 110px;
+        max-height: 130px;
+        padding: 14px 10px;
+    }
+    
+    .program-icon-only {
+        width: 45px;
+        height: 45px;
+        font-size: 26px;
+        margin-bottom: 8px;
+    }
+    
+    .program-icon-img {
+        width: 36px;
+        height: 36px;
+    }
+    
+    .program-name-only {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .programs-controls {
+        padding: 20px 30px;
+    }
+    
+    .programs-filters {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+    
+    .search-input {
+        min-width: auto;
+    }
+    
+    .programs-categories {
+        justify-content: flex-start;
+    }
+    
+    .content-grid {
+        top: 220px;
+    }
+    
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 15px;
+        padding: 20px;
+        height: calc(100vh - 240px);
+    }
+    
+    .program-item {
+        min-height: 100px;
+        max-height: 120px;
+        padding: 12px 8px;
+    }
+    
+    .program-icon-only {
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+        margin-bottom: 8px;
+    }
+    
+    .program-icon-img {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .program-icon-fallback {
+        font-size: 20px;
+    }
+    
+    .program-name-only {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 768px) {
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+        padding: 15px;
+    }
+    
+    .program-item {
+        min-height: 90px;
+        max-height: 110px;
+        padding: 10px 6px;
+    }
+    
+    .program-icon-only {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        margin-bottom: 6px;
+    }
+    
+    .program-icon-img {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .program-icon-fallback {
+        font-size: 18px;
+    }
+    
+    .program-name-only {
+        font-size: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .programs-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 10px;
+        padding: 10px;
+    }
+    
+    .program-item {
+        min-height: 80px;
+        max-height: 100px;
+        padding: 8px 4px;
+    }
+    
+    .program-icon-only {
+        width: 32px;
+        height: 32px;
+        font-size: 18px;
+        margin-bottom: 4px;
+    }
+    
+    .program-icon-img {
+        width: 24px;
+        height: 24px;
+    }
+    
+    .program-icon-fallback {
+        font-size: 16px;
+    }
+    
+    .program-name-only {
+        font-size: 9px;
+        -webkit-line-clamp: 3;
+    }
+}
