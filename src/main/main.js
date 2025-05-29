@@ -3,7 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { exec, execFile } = require('child_process');
+
+// AJUSTE: Importar os novos módulos separados
 const systemInfo = require('./system-info');
+const gamesInfo = require('./games-info.js');
+const programsInfo = require('./programs-info.js');
 
 let mainWindow;
 
@@ -51,6 +55,7 @@ function createMainWindow() {
 // IPC Handlers para informações do sistema
 ipcMain.handle('get-system-info', async () => {
   try {
+    // Nenhuma alteração aqui, a função continua em system-info
     const info = await systemInfo.getAllSystemInfo();
     console.log('Informações do sistema obtidas com sucesso');
     return info;
@@ -86,7 +91,8 @@ ipcMain.handle('launch-program', async (event, programPath) => {
 ipcMain.handle('get-installed-programs', async () => {
   try {
     console.log('Obtendo programas instalados...');
-    const programs = await systemInfo.getInstalledPrograms();
+    // AJUSTE: Chamar a função do módulo 'programs-info'
+    const programs = await programsInfo.getInstalledPrograms();
     console.log(`Total de programas encontrados: ${programs.length}`);
     
     const filteredPrograms = programs.filter(program => 
@@ -104,7 +110,8 @@ ipcMain.handle('get-installed-programs', async () => {
 // IPC Handlers para jogos
 ipcMain.handle('get-installed-games', async () => {
   try {
-    const games = await systemInfo.getInstalledGames();
+    // AJUSTE: Chamar a função do módulo 'games-info'
+    const games = await gamesInfo.getInstalledGames();
     console.log(`Jogos encontrados: ${games.length}`);
     return games;
   } catch (error) {
@@ -120,7 +127,8 @@ ipcMain.handle('launch-game', async (event, gamePath) => {
     }
 
     console.log(`Iniciando jogo: ${gamePath}`);
-    const result = await systemInfo.launchGame({ path: gamePath });
+    // AJUSTE: Chamar a função do módulo 'games-info'
+    const result = await gamesInfo.launchGame({ path: gamePath });
     return { success: true, message: 'Jogo iniciado com sucesso', result };
   } catch (error) {
     console.error('Erro ao iniciar jogo:', error);
@@ -130,8 +138,9 @@ ipcMain.handle('launch-game', async (event, gamePath) => {
 
 ipcMain.handle('get-games-summary', async () => {
   try {
-    const games = await systemInfo.getInstalledGames();
-    const summary = systemInfo.getGamesSummary(games);
+    // AJUSTE: Chamar as funções do módulo 'games-info'
+    const games = await gamesInfo.getInstalledGames();
+    const summary = gamesInfo.getGamesSummary(games);
     return summary;
   } catch (error) {
     console.error('Erro ao obter resumo de jogos:', error);
@@ -146,8 +155,9 @@ ipcMain.handle('get-games-summary', async () => {
 
 ipcMain.handle('search-games', async (event, searchTerm) => {
   try {
-    const games = await systemInfo.getInstalledGames();
-    const filteredGames = systemInfo.searchGamesByName(games, searchTerm);
+    // AJUSTE: Chamar as funções do módulo 'games-info'
+    const games = await gamesInfo.getInstalledGames();
+    const filteredGames = gamesInfo.searchGamesByName(games, searchTerm);
     return filteredGames;
   } catch (error) {
     console.error('Erro ao buscar jogos:', error);
@@ -157,8 +167,9 @@ ipcMain.handle('search-games', async (event, searchTerm) => {
 
 ipcMain.handle('get-games-by-platform', async (event, platform) => {
   try {
-    const games = await systemInfo.getInstalledGames();
-    const platformGames = systemInfo.getGamesByPlatform(games, platform);
+    // AJUSTE: Chamar as funções do módulo 'games-info'
+    const games = await gamesInfo.getInstalledGames();
+    const platformGames = gamesInfo.getGamesByPlatform(games, platform);
     return platformGames;
   } catch (error) {
     console.error('Erro ao filtrar jogos por plataforma:', error);
@@ -168,7 +179,8 @@ ipcMain.handle('get-games-by-platform', async (event, platform) => {
 
 ipcMain.handle('add-game-to-startzone', async (event, { name, path: gamePath }) => {
   try {
-    const success = await systemInfo.addGameToStartZone(name, gamePath);
+    // AJUSTE: Chamar a função do módulo 'games-info'
+    const success = await gamesInfo.addGameToStartZone(name, gamePath);
     return { success, message: success ? 'Jogo adicionado à StartZone' : 'Falha ao adicionar jogo' };
   } catch (error) {
     console.error('Erro ao adicionar jogo à StartZone:', error);
@@ -178,7 +190,8 @@ ipcMain.handle('add-game-to-startzone', async (event, { name, path: gamePath }) 
 
 ipcMain.handle('ensure-startzone-folder', async () => {
   try {
-    const folderPath = await systemInfo.ensureStartZoneGamesFolder();
+    // AJUSTE: Chamar a função do módulo 'games-info'
+    const folderPath = await gamesInfo.ensureStartZoneGamesFolder();
     return { success: !!folderPath, path: folderPath };
   } catch (error) {
     console.error('Erro ao verificar pasta StartZone:', error);

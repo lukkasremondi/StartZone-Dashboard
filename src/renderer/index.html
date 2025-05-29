@@ -1,4 +1,3 @@
- 
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -6,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StartZone</title>
     <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="css/games.css">
     <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/shared-components.css">
+    <link rel="stylesheet" href="css/home-screen.css">
+    <link rel="stylesheet" href="css/games.css">
+    <link rel="stylesheet" href="css/programs.css">
 </head>
 <body>
     <header id="system-header">
@@ -61,7 +63,7 @@
         <div id="games-screen" class="screen">
             <div class="screen-header">
                 <h1>Jogos Disponíveis</h1>
-                <div class="back-button" id="games-back">← Voltar</div>
+                <div class="back-button" id="games-back">Voltar</div>
             </div>
             <div class="content-grid" id="games-grid">
                 <div class="loading">Carregando jogos...</div>
@@ -69,19 +71,34 @@
         </div>
 
         <div id="programs-screen" class="screen">
+            <div class="programs-controls">
+                <div class="programs-filters">
+                    <input type="text" id="search-input" class="search-input" placeholder="Buscar programas...">
+                    <select id="sort-select" class="sort-select">
+                        <option value="name-asc">Nome (A-Z)</option>
+                        <option value="name-desc">Nome (Z-A)</option>
+                    </select>
+                    <div id="filter-toggle" class="filter-toggle">
+                        <span class="filter-icon">☰</span>
+                        <span class="filter-text">Filtros</span>
+                    </div>
+                    <div id="programs-count" class="programs-count">0</div>
+                </div>
+                <div class="programs-categories" id="programs-categories">
+                    </div>
+            </div>
             <div class="screen-header">
                 <h1>Programas Instalados</h1>
-                <div class="back-button" id="programs-back">← Voltar</div>
+                <div class="back-button" id="programs-back">Voltar</div>
             </div>
             <div class="content-grid" id="programs-grid">
-                <div class="loading">Carregando programas...</div>
-            </div>
+                 </div>
         </div>
 
         <div id="shutdown-screen" class="screen">
             <div class="screen-header">
                 <h1>Opções de Energia</h1>
-                <div class="back-button" id="shutdown-back">← Voltar</div>
+                <div class="back-button" id="shutdown-back">Voltar</div>
             </div>
             <div class="power-options">
                 <div class="power-option" id="shutdown-pc">

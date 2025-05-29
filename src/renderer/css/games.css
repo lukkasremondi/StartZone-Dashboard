@@ -1,440 +1,96 @@
-/* games.css - Estilos específicos para a interface de jogos */
+/*
+ * Contém estilos que se aplicam APENAS aos controles
+ * dentro do cabeçalho da tela de jogos, com base nas classes
+ * geradas pelo games.js.
+*/
 
-/* Container de pesquisa */
-.search-container {
+/* Garante que o cabeçalho use Flexbox para alinhar título, busca e filtros */
+#games-screen .screen-header {
     display: flex;
     align-items: center;
-    margin: 10px 0;
-    position: relative;
+    gap: 30px; /* Espaço entre o título e o botão "Voltar" */
 }
 
-.search-input {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 25px;
-    padding: 10px 20px;
-    color: white;
+/* Container da busca, criado pelo games.js */
+/* O truque 'margin-left: auto' empurra a busca e os filtros para a direita */
+#games-screen .search-container {
+    margin-left: auto;
+    position: relative; /* Necessário para o botão de limpar */
+}
+
+/* Estilo do input de pesquisa */
+#games-screen .search-input {
+    padding: 10px 35px 10px 18px; /* Espaço à direita para o '✕' */
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    color: #ffffff;
     font-size: 14px;
-    width: 300px;
-    transition: all 0.3s ease;
+    min-width: 250px;
+    transition: all 0.2s ease-in-out;
 }
 
-.search-input:focus {
+#games-screen .search-input:focus {
     outline: none;
     border-color: #00d4ff;
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+    background: rgba(0, 212, 255, 0.08);
 }
 
-.search-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.search-clear {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    border-radius: 50%;
-    width: 25px;
-    height: 25px;
-    color: white;
-    cursor: pointer;
-    margin-left: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-}
-
-.search-clear:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
-}
-
-/* Container de filtros */
-.filter-container {
-    margin: 15px 0;
-}
-
-.filter-tabs {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.filter-tab {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    padding: 8px 16px;
-    color: white;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 12px;
-    font-weight: 500;
-}
-
-.filter-tab:hover {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
-}
-
-.filter-tab.active {
-    background: linear-gradient(135deg, #00d4ff, #0099cc);
-    border-color: #00d4ff;
-    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
-}
-
-/* Grid de jogos */
-.content-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    padding: 20px 0;
-    max-height: calc(100vh - 200px);
-    overflow-y: auto;
-}
-
-/* Item de jogo */
-.game-item {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 15px;
-    padding: 15px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-    backdrop-filter: blur(10px);
-}
-
-.game-item:hover {
-    transform: translateY(-5px);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-    border-color: #00d4ff;
-    box-shadow: 0 10px 30px rgba(0, 212, 255, 0.2);
-}
-
-.game-item:focus {
-    outline: none;
-    border-color: #00d4ff;
-    box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
-}
-
-/* Ícone do jogo */
-.game-icon {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 15px;
-    position: relative;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.game-icon img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 12px;
-}
-
-.default-game-icon {
-    font-size: 40px;
-    opacity: 0.7;
-}
-
-.platform-badge {
+/* Botão para limpar a busca */
+#games-screen .search-clear {
     position: absolute;
-    bottom: -5px;
-    right: -5px;
-    width: 25px;
-    height: 25px;
-    background: rgba(0, 0, 0, 0.8);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    border: 2px solid white;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 5px;
 }
 
-/* Informações do jogo */
-.game-info {
-    text-align: center;
-    margin-bottom: 15px;
+#games-screen .search-clear:hover {
+    color: #ffffff;
 }
 
-.game-name {
-    color: white;
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+/* Container geral dos filtros */
+#games-screen .filter-container {
+    margin-left: 20px; /* Espaço entre a busca e os filtros */
 }
 
-.game-details {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 8px;
-}
-
-.game-size,
-.game-publisher {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-}
-
-.game-platform {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-}
-
-/* Ações do jogo */
-.game-actions {
+/* A "cápsula" que envolve os botões. A classe correta é '.filter-tabs' */
+#games-screen .filter-tabs {
     display: flex;
     gap: 10px;
-    justify-content: center;
+    background-color: rgba(0,0,0,0.2);
+    padding: 4px;
+    border-radius: 10px;
 }
 
-.game-launch-btn,
-.game-add-btn {
-    background: linear-gradient(135deg, #00d4ff, #0099cc);
-    border: none;
+/* O estilo para os botões. A classe correta é '.filter-tab' */
+#games-screen .filter-tab {
+    padding: 8px 16px;
+    background-color: transparent;
+    border: 1px solid transparent;
     border-radius: 8px;
-    padding: 8px 12px;
-    color: white;
-    cursor: pointer;
-    font-size: 14px;
+    color: #a0a0a0;
     font-weight: 600;
-    transition: all 0.3s ease;
-    min-width: 40px;
-}
-
-.game-launch-btn:hover,
-.game-add-btn:hover {
-    background: linear-gradient(135deg, #0099cc, #007399);
-    transform: scale(1.05);
-    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
-}
-
-.game-add-btn {
-    background: linear-gradient(135deg, #28a745, #20903c);
-}
-
-.game-add-btn:hover {
-    background: linear-gradient(135deg, #20903c, #1e7e34);
-    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-}
-
-/* Estados especiais */
-.no-games {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 40px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.no-games-icon {
-    font-size: 48px;
-    margin-bottom: 20px;
-    opacity: 0.5;
-}
-
-.no-games-text {
-    font-size: 18px;
-}
-
-.loading {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 40px;
-    color: rgba(255, 255, 255, 0.8);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-}
-
-.loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(255, 255, 255, 0.2);
-    border-top: 4px solid #00d4ff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.error {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 40px;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.error-icon {
-    font-size: 48px;
-    margin-bottom: 20px;
-    color: #ff6b6b;
-}
-
-.error-text {
-    font-size: 18px;
-    margin-bottom: 20px;
-}
-
-.retry-btn {
-    background: linear-gradient(135deg, #ff6b6b, #ff5252);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    color: white;
+    font-size: 13px;
+    text-transform: uppercase;
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease-in-out;
 }
 
-.retry-btn:hover {
-    background: linear-gradient(135deg, #ff5252, #f44336);
-    transform: scale(1.05);
+#games-screen .filter-tab:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
 }
 
-/* Resumo de jogos */
-.games-summary {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-}
-
-.games-summary span {
-    padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-}
-
-/* Animações */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.game-item {
-    animation: fadeInUp 0.5s ease forwards;
-}
-
-.game-item:nth-child(even) {
-    animation-delay: 0.1s;
-}
-
-.game-item:nth-child(3n) {
-    animation-delay: 0.2s;
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-    .content-grid {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-    }
-    
-    .search-input {
-        width: 100%;
-        max-width: 250px;
-    }
-    
-    .filter-tabs {
-        justify-content: center;
-    }
-    
-    .game-item {
-        padding: 10px;
-    }
-    
-    .game-icon {
-        width: 60px;
-        height: 60px;
-        margin-bottom: 10px;
-    }
-    
-    .default-game-icon {
-        font-size: 30px;
-    }
-}
-
-@media (max-width: 480px) {
-    .content-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 10px;
-    }
-    
-    .game-name {
-        font-size: 14px;
-    }
-    
-    .game-actions {
-        flex-direction: column;
-        gap: 5px;
-    }
-}
-
-/* Estilos para capas de jogos */
-.game-item {
-    position: relative;
-    background: var(--card-bg, #2a2a2a);
-    border-radius: 12px;
-    overflow: hidden;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    border: 1px solid var(--border-color, #444);
-}
-
-.game-item:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    border-color: var(--accent-color, #007ACC);
-}
-
-.game-item:focus {
-    outline: none;
-    border-color: var(--accent-color, #007ACC);
-    box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
-}
-
-/* Container da capa */
-.game-cover {
-    position: relative;
-    width: 100%;
-    height: 200px;
-    overflow: hidden;
-    background: var(--secondary-bg, #1e1e1e);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* Imagem da capa */
-.game-cover-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
+/* O estilo para o botão ativo. A classe é '.filter-tab.active' */
+#games-screen .filter-tab.active {
+    background-color: #00d4ff;
+    color: #000000;
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(0, 212, 255, 0.3);
 }
