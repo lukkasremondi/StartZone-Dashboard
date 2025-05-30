@@ -2,21 +2,53 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-// ADIÇÃO 1/2: Dependências para buscar capas e formatar o caminho para URL
 const url = require('url');
+const { shell } = require('electron');
 const { fetchAndCacheCover } = require('./games-covers.js');
+const axios = require('axios');
 
+// Chave da API da RAWG para buscar detalhes dos jogos
+const RAWG_API_KEY = 'ce546c1cceb34b3caf4b5745705a405c';
+
+// Função para traduzir texto usando a MyMemory API
+async function translateText(text, targetLang = 'pt-BR', sourceLang = 'en') {
+    if (!text) return null;
+    console.log(`[Game-Info] Tentando traduzir texto de ${sourceLang} para ${targetLang}...`);
+    try {
+        const encodedText = encodeURIComponent(text);
+        // Adiciona um parâmetro de email fictício, às vezes ajuda com limites da MyMemory
+        const apiUrl = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=${sourceLang}|${targetLang}&de=lucas.remondi@outlook.com`;
+        
+        const response = await axios.get(apiUrl);
+        
+        if (response.data && response.data.responseData && response.data.responseData.translatedText) {
+            let translated = response.data.responseData.translatedText;
+            // Verifica se a tradução realmente ocorreu e não é um aviso de limite
+            if (response.data.responseStatus === 200 && !translated.toUpperCase().includes("MYMEMORY WARNING")) {
+                 console.log(`[Game-Info] Texto traduzido com sucesso.`);
+                return translated;
+            } else {
+                console.warn("[Game-Info] MyMemory API: Limite de traduções ou aviso presente. Usando texto original.", response.data.responseDetails || "");
+                return text; // Retorna o texto original se aviso de limite ou erro
+            }
+        } else {
+            console.warn('[Game-Info] MyMemory API não retornou texto traduzido ou falhou:', response.data);
+            return text; 
+        }
+    } catch (error) {
+        console.error('[Game-Info] Erro ao traduzir texto com MyMemory API:', error.message);
+        return text; 
+    }
+}
 
 async function getInstalledGames() {
     const games = [];
     console.log('🎮 Iniciando busca por jogos instalados...');
     
     try {
-        // Array para armazenar as promessas de busca
         const searchPromises = [];
         
-        // Função helper para buscar com timeout
-        const searchWithTimeout = async (searchFunction, name, timeout = 10000) => {
+        const searchWithTimeout = async (searchFunction, name, timeout = 15000) => {
             return Promise.race([
                 searchFunction(),
                 new Promise((_, reject) => 
@@ -25,141 +57,82 @@ async function getInstalledGames() {
             ]);
         };
         
-        // Busca jogos de todas as plataformas em paralelo
         console.log('Iniciando busca em paralelo...');
         
-        // Steam
         searchPromises.push(
             searchWithTimeout(getSteamGames, 'Steam')
                 .then(steamGames => {
                     console.log(`✓ Steam: ${steamGames?.length || 0} jogos encontrados`);
-                    return { platform: 'steam', games: steamGames || [] };
+                    return { platform: 'Steam', games: steamGames || [] };
                 })
                 .catch(error => {
                     console.error('✗ Erro Steam:', error.message);
-                    return { platform: 'steam', games: [] };
+                    return { platform: 'Steam', games: [] };
                 })
         );
         
-        // Epic Games
         searchPromises.push(
             searchWithTimeout(getEpicGames, 'Epic Games')
                 .then(epicGames => {
                     console.log(`✓ Epic: ${epicGames?.length || 0} jogos encontrados`);
-                    return { platform: 'epic', games: epicGames || [] };
+                    return { platform: 'Epic Games', games: epicGames || [] };
                 })
                 .catch(error => {
                     console.error('✗ Erro Epic:', error.message);
-                    return { platform: 'epic', games: [] };
+                    return { platform: 'Epic Games', games: [] };
                 })
         );
         
-        // Jogos Locais
         searchPromises.push(
             searchWithTimeout(getLocalGames, 'Jogos Locais')
                 .then(localGames => {
                     console.log(`✓ Local: ${localGames?.length || 0} jogos encontrados`);
-                    return { platform: 'local', games: localGames || [] };
+                    return { platform: 'Local Games', games: localGames || [] };
                 })
                 .catch(error => {
                     console.error('✗ Erro Local:', error.message);
-                    return { platform: 'local', games: [] };
+                    return { platform: 'Local Games', games: [] };
                 })
         );
         
-        // Aguardar todas as buscas
         const results = await Promise.allSettled(searchPromises);
         
-        // Processar resultados
-        let totalFound = 0;
         results.forEach(result => {
             if (result.status === 'fulfilled' && result.value.games) {
                 const platformGames = result.value.games;
                 if (Array.isArray(platformGames)) {
                     games.push(...platformGames);
-                    totalFound += platformGames.length;
-                    console.log(`📊 ${result.value.platform}: ${platformGames.length} jogos adicionados`);
-                } else {
-                    console.warn(`⚠️ ${result.value.platform}: resultado não é array:`, typeof platformGames);
                 }
-            } else {
-                console.warn(`⚠️ Falha na busca:`, result.reason?.message || 'Erro desconhecido');
             }
         });
         
         console.log(`📋 Total bruto coletado: ${games.length} jogos`);
         
-        // Verificar se temos jogos
-        if (games.length === 0) {
-            console.warn('⚠️ Nenhum jogo foi encontrado em nenhuma plataforma');
-            
-            // Teste de fallback - tentar buscar pelo menos um jogo local simples
-            try {
-                console.log('🔍 Tentando busca de fallback...');
-                const fallbackGames = await getLocalGames();
-                if (fallbackGames && fallbackGames.length > 0) {
-                    games.push(...fallbackGames);
-                    console.log(`✓ Fallback: ${fallbackGames.length} jogos encontrados`);
-                }
-            } catch (fallbackError) {
-                console.error('✗ Fallback também falhou:', fallbackError);
-            }
-        }
-        
-        // Remove duplicatas baseado no nome (case-insensitive)
         const uniqueGames = removeDuplicateGamesByName(games);
         console.log(`🔧 Após remoção de duplicatas: ${uniqueGames.length} jogos`);
         
-
-        // ADIÇÃO 2/2: Bloco para buscar as capas dos jogos únicos encontrados
         console.log('🖼️  Iniciando busca de capas para jogos únicos...');
         const gamesWithCoversPromises = uniqueGames.map(async (game) => {
             const localCoverPath = await fetchAndCacheCover(game.name);
-            // Converte o caminho local para uma URL que o HTML/CSS possa usar
             const coverUrl = localCoverPath ? url.pathToFileURL(localCoverPath).href : null;
             return {
                 ...game,
-                coverPath: coverUrl, // Adiciona a nova propriedade ao objeto do jogo
+                coverPath: coverUrl,
             };
         });
 
-        // Aguarda todas as buscas de capa terminarem
         const enrichedGames = await Promise.all(gamesWithCoversPromises);
         console.log('✅ Busca de capas finalizada.');
         
-
-        // Ordena alfabeticamente (usando a lista já com as capas)
         const sortedGames = enrichedGames.sort((a, b) => {
             if (!a.name || !b.name) return 0;
             return a.name.localeCompare(b.name, 'pt-BR');
         });
         
-        // Log final detalhado
-        console.log(`🎮 RESULTADO FINAL: ${sortedGames.length} jogos únicos encontrados`);
-        
         if (sortedGames.length > 0) {
-            console.log('📊 Distribuição por plataforma:');
-            const stats = getGameStatistics(sortedGames);
-            Object.entries(stats).forEach(([platform, count]) => {
-                console.log(`   ${platform}: ${count} jogos`);
-            });
-            
-            // Mostrar primeiros 5 jogos como amostra
-            console.log('🎯 Amostra de jogos encontrados:');
-            sortedGames.slice(0, 5).forEach((game, index) => {
-                console.log(`   ${index + 1}. ${game.name} | ${game.path?.substring(0, 50)}...`);
-            });
-            
-            if (sortedGames.length > 5) {
-                console.log(`   ... e mais ${sortedGames.length - 5} jogos`);
-            }
+            console.log(`🎮 RESULTADO FINAL: ${sortedGames.length} jogos únicos encontrados`);
         } else {
             console.error('❌ NENHUM JOGO FOI ENCONTRADO!');
-            console.log('🔍 Verificações sugeridas:');
-            console.log('   1. Steam está instalado?');
-            console.log('   2. Epic Games Launcher está instalado?');
-            console.log('   3. Existem jogos nas pastas de jogos locais?');
-            console.log('   4. As funções getSteamGames, getEpicGames e getLocalGames estão funcionando?');
         }
         
         return sortedGames;
@@ -167,40 +140,30 @@ async function getInstalledGames() {
     } catch (error) {
         console.error('💥 ERRO CRÍTICO ao buscar jogos instalados:', error);
         console.error('Stack trace:', error.stack);
-        
-        // Tentar retornar pelo menos os jogos que conseguimos coletar
-        console.log(`🚨 Retornando ${games.length} jogos coletados antes do erro`);
-        return games;
+        return [];
     }
 }
 
-// --- TODAS AS OUTRAS FUNÇÕES (testGameSearch, removeDuplicateGamesByName, etc.) CONTINUAM EXATAMENTE IGUAIS AO SEU CÓDIGO ---
-
 async function testGameSearch() {
     console.log('🧪 TESTE DE BUSCA DE JOGOS');
-    
     const tests = [
         { name: 'Steam', func: getSteamGames },
         { name: 'Epic', func: getEpicGames },
         { name: 'Local', func: getLocalGames }
     ];
-    
     const results = {};
-    
     for (const test of tests) {
         try {
             console.log(`🔍 Testando ${test.name}...`);
             const startTime = Date.now();
             const result = await test.func();
             const duration = Date.now() - startTime;
-            
             results[test.name] = {
                 success: true,
                 count: result?.length || 0,
                 duration: duration,
                 sample: result?.slice(0, 2)
             };
-            
             console.log(`✅ ${test.name}: ${result?.length || 0} jogos em ${duration}ms`);
         } catch (error) {
             results[test.name] = {
@@ -211,42 +174,34 @@ async function testGameSearch() {
             console.error(`❌ ${test.name}: ${error.message}`);
         }
     }
-    
     return results;
 }
 
 function removeDuplicateGamesByName(games) {
     const seen = new Map();
     const uniqueGames = [];
-    
     for (const game of games) {
         if (!game || !game.name) continue;
-        
         const normalizedName = game.name.toLowerCase().trim()
-            .replace(/[^\w\s]/g, '') // Remove caracteres especiais
-            .replace(/\s+/g, ' ');   // Normaliza espaços
-        
+            .replace(/[^\w\s]/g, '') 
+            .replace(/\s+/g, ' ');  
         if (!seen.has(normalizedName)) {
-            seen.set(normalizedName, true);
+            seen.set(normalizedName, game);
             uniqueGames.push(game);
         } else {
-            const existingIndex = uniqueGames.findIndex(g => 
-                g.name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ') === normalizedName
-            );
+            const existingGame = seen.get(normalizedName);
+            const platformPriority = { 'Steam': 3, 'Epic Games': 2, 'Local Games': 1 };
+            const currentPriority = platformPriority[game.platform] || 0;
+            const existingPriority = platformPriority[existingGame.platform] || 0;
             
-            if (existingIndex !== -1) {
-                const existing = uniqueGames[existingIndex];
-                const platformPriority = { 'Steam': 3, 'Epic Games': 2, 'Local Games': 1 };
-                const currentPriority = platformPriority[game.platform] || 0;
-                const existingPriority = platformPriority[existing.platform] || 0;
-                
-                if (currentPriority > existingPriority) {
-                    uniqueGames[existingIndex] = game;
-                }
+            if (currentPriority > existingPriority) {
+                const indexToRemove = uniqueGames.findIndex(ug => ug === existingGame);
+                if (indexToRemove !== -1) uniqueGames.splice(indexToRemove, 1);
+                uniqueGames.push(game);
+                seen.set(normalizedName, game);
             }
         }
     }
-    
     return uniqueGames;
 }
 
@@ -260,7 +215,13 @@ function getGameStatistics(games) {
 }
 
 function getGamesByPlatform(games, platform) {
-    return games.filter(game => game.platform && game.platform.toLowerCase() === platform.toLowerCase());
+    const platformMap = {
+        'steam': 'Steam',
+        'epic': 'Epic Games',
+        'other': 'Local Games'
+    };
+    const targetPlatform = platformMap[platform.toLowerCase()] || platform;
+    return games.filter(game => game.platform && game.platform.toLowerCase() === targetPlatform.toLowerCase());
 }
 
 function searchGamesByName(games, searchTerm) {
@@ -273,30 +234,34 @@ function getGamesSummary(games) {
     const summary = {
         total: games.length,
         platforms: getGameStatistics(games),
-        totalSize: '0GB',
-        avgSize: '0MB'
+        totalSize: '0 GB',
+        avgSize: '0 MB'
     };
-    
     let totalSizeBytes = 0;
     let gamesWithSize = 0;
-    
     for (const game of games) {
         if (game.size && game.size !== 'N/A') {
-            const sizeMatch = game.size.match(/(\d+(?:\.\d+)?)(MB|GB)/);
+            let bytes = 0;
+            const sizeMatch = String(game.size).match(/(\d+(?:\.\d+)?)\s*(MB|GB)/i);
             if (sizeMatch) {
-                let bytes = parseFloat(sizeMatch[1]);
-                if (sizeMatch[2] === 'GB') bytes *= 1024 * 1024 * 1024;
-                else bytes *= 1024 * 1024;
-                totalSizeBytes += bytes;
-                gamesWithSize++;
+                bytes = parseFloat(sizeMatch[1]);
+                if (sizeMatch[2].toUpperCase() === 'GB') bytes *= 1024 * 1024 * 1024;
+                else if (sizeMatch[2].toUpperCase() === 'MB') bytes *= 1024 * 1024;
+            }
+            if (bytes > 0) {
+                 totalSizeBytes += bytes;
+                 gamesWithSize++;
             }
         }
     }
-    
     if (totalSizeBytes > 0) {
-        summary.totalSize = `${Math.round(totalSizeBytes / 1024 / 1024 / 1024 * 100) / 100}GB`;
+        if (totalSizeBytes >= 1024 * 1024 * 1024) {
+            summary.totalSize = `${(totalSizeBytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        } else {
+            summary.totalSize = `${(totalSizeBytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
         if (gamesWithSize > 0) {
-            summary.avgSize = `${Math.round((totalSizeBytes / gamesWithSize) / 1024 / 1024)}MB`;
+            summary.avgSize = `${Math.round((totalSizeBytes / gamesWithSize) / (1024 * 1024))} MB`;
         }
     }
     return summary;
@@ -306,13 +271,11 @@ async function launchGame(game, mainWindow) {
     if (!game || !game.path) {
         return { success: false, message: "Caminho do jogo não fornecido." };
     }
-
-    console.log(`[Game-Info] Tentando iniciar: ${game.name}`);
-    
+    console.log(`[Game-Info] Tentando iniciar: ${game.name} em ${game.path}`);
     try {
-        const gameProcess = exec(`"${game.path}"`, { cwd: path.dirname(game.path) });
+        const gameDir = path.dirname(game.path);
+        const gameProcess = exec(`"${game.path}"`, { cwd: gameDir });
 
-        // Evento disparado quando o processo do jogo começa
         gameProcess.on('spawn', () => {
             console.log(`[Game-Info] ${game.name} iniciado. Enviando evento 'game-started'...`);
             if (mainWindow && !mainWindow.isDestroyed()) {
@@ -320,7 +283,6 @@ async function launchGame(game, mainWindow) {
             }
         });
 
-        // Evento disparado quando o usuário fecha o jogo
         gameProcess.on('close', (code) => {
             console.log(`[Game-Info] ${game.name} fechado (código: ${code}). Enviando evento 'game-stopped'...`);
             if (mainWindow && !mainWindow.isDestroyed()) {
@@ -328,82 +290,164 @@ async function launchGame(game, mainWindow) {
             }
         });
 
-        // Evento para erros durante a execução
         gameProcess.on('error', (err) => {
             console.error(`[Game-Info] Erro durante a execução de ${game.name}:`, err);
-            // Também envia um evento de 'stop' em caso de erro
             if (mainWindow && !mainWindow.isDestroyed()) {
                 mainWindow.webContents.send('game-stopped', game);
             }
         });
-
         return { success: true };
-
     } catch (error) {
         console.error(`[Game-Info] Falha ao executar o processo do jogo ${game.name}:`, error);
         return { success: false, message: error.message };
     }
 }
 
+function slugify(text) {
+    return text.toString().toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+}
+
+// AJUSTE NA LÓGICA DE BUSCA E TRADUÇÃO DA DESCRIÇÃO
+async function getGameDetails(gameName) {
+    if (!gameName) return null;
+    
+    const slug = slugify(gameName);
+    // Sempre busca em inglês primeiro na RAWG
+    const rawgUrl = `https://api.rawg.io/api/games/${slug}?key=${RAWG_API_KEY}`; 
+    
+    let rawDescription = 'Nenhuma descrição disponível.';
+    let developer = 'Não informado';
+    let releaseDate = 'Não informada';
+    let finalDescription = 'Nenhuma descrição disponível.';
+
+    try {
+        console.log(`[Game-Info] Buscando detalhes em EN para "${gameName}" na RAWG...`);
+        const response = await axios.get(rawgUrl);
+        const data = response.data;
+
+        if (data && (data.description_raw || data.description)) {
+            rawDescription = data.description_raw || data.description; // Prioriza description_raw
+            console.log(`[Game-Info] Descrição em EN da RAWG encontrada.`);
+        }
+
+        developer = data.developers?.[0]?.name || 'Não informado';
+        releaseDate = data.released ? new Date(data.released).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informada';
+
+        // Limpa tags HTML da descrição ANTES de traduzir
+        let cleanDescription = rawDescription.replace(/<[^>]+>/g, ''); // Regex para remover HTML
+        cleanDescription = cleanDescription.replace(/&nbsp;/g, ' ').replace(/\s{2,}/g, ' '); // Limpa &nbsp; e espaços múltiplos
+
+        // Se a descrição (limpa) não for vazia, tenta traduzir
+        if (cleanDescription && cleanDescription !== 'Nenhuma descrição disponível.') {
+            console.log(`[Game-Info] Tentando traduzir a descrição para PT-BR...`);
+            finalDescription = await translateText(cleanDescription, 'pt-BR', 'en');
+        } else {
+            finalDescription = cleanDescription; // Usa a descrição limpa se estiver vazia ou for a padrão
+        }
+
+        // Limita a 1020 caracteres APÓS a tradução
+        if (finalDescription.length > 600) {
+            finalDescription = finalDescription.substring(0, 600) + "...";
+        }
+
+    } catch (error) {
+        console.error(`[Game-Info] Erro ao buscar detalhes para "${gameName}" na API RAWG:`, error.message);
+        // finalDescription já está como 'Nenhuma descrição disponível.'
+        // developer e releaseDate já são 'Não informado(a)'
+    }
+
+    return {
+        description: finalDescription,
+        developer: developer,
+        releaseDate: releaseDate,
+    };
+}
+
+
 async function getSteamGames() {
     try {
         const steamGames = [];
         const steamPaths = [
             path.join(os.homedir(), 'AppData', 'Local', 'Steam'),
-            path.join('C:', 'Program Files (x86)', 'Steam'),
-            path.join('C:', 'Program Files', 'Steam'),
-            path.join('D:', 'Steam'),
-            path.join('E:', 'Steam')
+            'C:\\Program Files (x86)\\Steam',
+            'C:\\Program Files\\Steam',
+            'D:\\Steam',
+            'E:\\Steam',
         ];
+        const userDefinedSteamPath = process.env.STEAM_PATH;
+        if(userDefinedSteamPath && fs.existsSync(userDefinedSteamPath)) {
+            steamPaths.push(userDefinedSteamPath);
+        }
+
         let steamPath = null;
         for (const testPath of steamPaths) {
-            if (fs.existsSync(testPath)) {
-                steamPath = testPath;
-                break;
-            }
+            try {
+                if (fs.existsSync(testPath)) {
+                    steamPath = testPath;
+                    break;
+                }
+            } catch (e) { /* Ignora erros de acesso */ }
         }
+
         if (!steamPath) {
             console.log('Steam não encontrada nos caminhos padrão');
             return [];
         }
         const steamappsPath = path.join(steamPath, 'steamapps');
-        if (!fs.existsSync(steamappsPath)) {
-            console.log('Pasta steamapps não encontrada');
-            return [];
-        }
-        const acfFiles = fs.readdirSync(steamappsPath)
-            .filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
-        for (const acfFile of acfFiles) {
+        if (!fs.existsSync(steamappsPath)) return [];
+
+        const libraryFoldersPath = path.join(steamappsPath, 'libraryfolders.vdf');
+        const librarySearchPaths = [steamappsPath];
+
+        if (fs.existsSync(libraryFoldersPath)) {
             try {
-                const acfPath = path.join(steamappsPath, acfFile);
-                const acfContent = fs.readFileSync(acfPath, 'utf8');
-                const gameInfo = parseSteamACF(acfContent);
-                if (gameInfo && gameInfo.name && gameInfo.installdir) {
-                    const gamePath = path.join(steamappsPath, 'common', gameInfo.installdir);
-                    if (fs.existsSync(gamePath)) {
-                        const gameExe = findGameExecutable(gamePath, gameInfo.name);
-                        steamGames.push({
-                            name: gameInfo.name,
-                            path: gameExe || gamePath,
-                            appId: gameInfo.appid,
-                            installDir: gameInfo.installdir,
-                            platform: 'Steam',
-                            type: 'game',
-                            size: await getDirectorySize(gamePath).catch(() => 'N/A')
-                        });
+                const vdfContent = fs.readFileSync(libraryFoldersPath, 'utf-8');
+                const lines = vdfContent.split('\n');
+                lines.forEach(line => {
+                    const match = line.match(/"path"\s+"([^"]+)"/i);
+                    if (match && match[1]) {
+                        const libPath = match[1].replace(/\\\\/g, '\\');
+                        if (fs.existsSync(libPath) && fs.existsSync(path.join(libPath, 'steamapps'))) {
+                            librarySearchPaths.push(path.join(libPath, 'steamapps'));
+                        }
                     }
+                });
+            } catch (e) { console.error('Erro ao ler libraryfolders.vdf:', e); }
+        }
+        
+        for (const currentSteamappsPath of [...new Set(librarySearchPaths)]) {
+            const acfFiles = fs.readdirSync(currentSteamappsPath)
+                .filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
+            for (const acfFile of acfFiles) {
+                try {
+                    const acfPath = path.join(currentSteamappsPath, acfFile);
+                    const acfContent = fs.readFileSync(acfPath, 'utf8');
+                    const gameInfo = parseSteamACF(acfContent);
+                    if (gameInfo && gameInfo.name && gameInfo.installdir) {
+                        const gamePath = path.join(currentSteamappsPath, 'common', gameInfo.installdir);
+                        if (fs.existsSync(gamePath)) {
+                            const gameExe = findGameExecutable(gamePath, gameInfo.name);
+                            steamGames.push({
+                                name: gameInfo.name,
+                                path: gameExe || gamePath,
+                                appId: gameInfo.appid,
+                                installDir: gameInfo.installdir,
+                                platform: 'Steam',
+                                type: 'game',
+                                size: await getDirectorySize(gamePath)
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Erro ao processar ${acfFile}:`, error);
                 }
-            } catch (error) {
-                console.error(`Erro ao processar ${acfFile}:`, error);
-                continue;
             }
         }
-        const libraryFoldersPath = path.join(steamappsPath, 'libraryfolders.vdf');
-        if (fs.existsSync(libraryFoldersPath)) {
-            const additionalGames = await getGamesFromAdditionalLibraries(libraryFoldersPath);
-            steamGames.push(...additionalGames);
-        }
-        console.log(`Encontrados ${steamGames.length} jogos da Steam`);
         return steamGames;
     } catch (error) {
         console.error('Erro ao buscar jogos da Steam:', error);
@@ -413,42 +457,53 @@ async function getSteamGames() {
 
 function parseSteamACF(content) {
     try {
-        const lines = content.split('\n');
         const gameInfo = {};
-        for (const line of lines) {
-            const trimmed = line.trim();
-            if (trimmed.includes('"appid"')) gameInfo.appid = extractValue(trimmed);
-            else if (trimmed.includes('"name"')) gameInfo.name = extractValue(trimmed);
-            else if (trimmed.includes('"installdir"')) gameInfo.installdir = extractValue(trimmed);
-        }
-        return gameInfo;
+        const appidMatch = content.match(/"appid"\s+"(\d+)"/);
+        const nameMatch = content.match(/"name"\s+"([^"]+)"/);
+        const installdirMatch = content.match(/"installdir"\s+"([^"]+)"/);
+
+        if (appidMatch) gameInfo.appid = appidMatch[1];
+        if (nameMatch) gameInfo.name = nameMatch[1];
+        if (installdirMatch) gameInfo.installdir = installdirMatch[1];
+        
+        return (gameInfo.appid && gameInfo.name && gameInfo.installdir) ? gameInfo : null;
     } catch (error) {
         console.error('Erro ao fazer parse do ACF:', error);
         return null;
     }
 }
 
-function extractValue(line) {
+function extractValue(line) { 
     const matches = line.match(/"([^"]+)"\s+"([^"]+)"/);
     return matches ? matches[2] : null;
 }
 
 function findGameExecutable(gamePath, gameName) {
     try {
-        const files = fs.readdirSync(gamePath);
-        const gameNameLower = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const files = fs.readdirSync(gamePath, { withFileTypes: true });
+        let candidates = [];
         for (const file of files) {
-            if (file.toLowerCase().endsWith('.exe')) {
-                const fileNameLower = file.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (fileNameLower.includes(gameNameLower) || gameNameLower.includes(fileNameLower)) {
-                    return path.join(gamePath, file);
-                }
+            if (file.isFile() && file.name.toLowerCase().endsWith('.exe')) {
+                candidates.push(file.name);
             }
         }
-        const exeFile = files.find(file => file.toLowerCase().endsWith('.exe'));
-        return exeFile ? path.join(gamePath, exeFile) : null;
+
+        if (candidates.length === 0) return null;
+        if (candidates.length === 1) return path.join(gamePath, candidates[0]);
+
+        const gameNameLower = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        candidates.sort((a, b) => {
+            const aLower = a.toLowerCase();
+            const bLower = b.toLowerCase();
+            if (aLower.includes(gameNameLower)) return -1;
+            if (bLower.includes(gameNameLower)) return 1;
+            if (aLower === "game.exe") return -1;
+            if (bLower === "game.exe") return 1;
+            return 0;
+        });
+        return path.join(gamePath, candidates[0]);
     } catch (error) {
-        console.error('Erro ao procurar executável do jogo:', error);
+        console.error(`Erro ao procurar executável em ${gamePath} para ${gameName}:`, error);
         return null;
     }
 }
@@ -456,12 +511,14 @@ function findGameExecutable(gamePath, gameName) {
 async function getDirectorySize(dirPath) {
     return new Promise((resolve) => {
         if (process.platform === 'win32') {
-            const cmd = `powershell -Command "(Get-ChildItem -Path '${dirPath}' -Recurse | Measure-Object -Property Length -Sum).Sum"`;
+            const cmd = `powershell -Command "(Get-ChildItem -Path '${dirPath}' -Recurse -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum"`;
             exec(cmd, { timeout: 10000 }, (error, stdout) => {
-                if (error) return resolve('N/A');
+                if (error) { resolve('N/A'); return; }
                 const bytes = parseInt(stdout.trim());
                 if (!isNaN(bytes)) {
-                    resolve(`${Math.round(bytes / 1024 / 1024 / 1024 * 100) / 100}GB`);
+                    if (bytes === 0) resolve('~0 MB');
+                    else if (bytes > 1024 * 1024 * 1024) resolve(`${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`);
+                    else resolve(`${(bytes / (1024 * 1024)).toFixed(2)} MB`);
                 } else {
                     resolve('N/A');
                 }
@@ -472,50 +529,8 @@ async function getDirectorySize(dirPath) {
     });
 }
 
-async function getGamesFromAdditionalLibraries(libraryFoldersPath) {
-    try {
-        const content = fs.readFileSync(libraryFoldersPath, 'utf8');
-        const additionalGames = [];
-        const lines = content.split('\n');
-        const libraryPaths = [];
-        for (const line of lines) {
-            if (line.includes('"path"')) {
-                const pathValue = extractValue(line);
-                if (pathValue && fs.existsSync(pathValue)) libraryPaths.push(pathValue);
-            }
-        }
-        for (const libPath of libraryPaths) {
-            const steamappsPath = path.join(libPath, 'steamapps');
-            if (fs.existsSync(steamappsPath)) {
-                const acfFiles = fs.readdirSync(steamappsPath).filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
-                for (const acfFile of acfFiles) {
-                    try {
-                        const acfPath = path.join(steamappsPath, acfFile);
-                        const acfContent = fs.readFileSync(acfPath, 'utf8');
-                        const gameInfo = parseSteamACF(acfContent);
-                        if (gameInfo && gameInfo.name && gameInfo.installdir) {
-                            const gamePath = path.join(steamappsPath, 'common', gameInfo.installdir);
-                            if (fs.existsSync(gamePath)) {
-                                const gameExe = findGameExecutable(gamePath, gameInfo.name);
-                                additionalGames.push({
-                                    name: gameInfo.name, path: gameExe || gamePath, appId: gameInfo.appid,
-                                    installDir: gameInfo.installdir, platform: 'Steam', type: 'game',
-                                    size: await getDirectorySize(gamePath).catch(() => 'N/A')
-                                });
-                            }
-                        }
-                    } catch (error) {
-                        console.error(`Erro ao processar ${acfFile} da biblioteca adicional:`, error);
-                        continue;
-                    }
-                }
-            }
-        }
-        return additionalGames;
-    } catch (error) {
-        console.error('Erro ao buscar bibliotecas adicionais da Steam:', error);
-        return [];
-    }
+async function getGamesFromAdditionalLibraries(libraryFoldersPath) { 
+    return [];
 }
 
 async function getEpicGames() {
@@ -532,7 +547,6 @@ async function getEpicGames() {
             epicGames.push(...manifestGames);
         }
         const uniqueGames = removeDuplicateGames(epicGames);
-        console.log(`Encontrados ${uniqueGames.length} jogos da Epic Games`);
         return uniqueGames;
     } catch (error) {
         console.error('Erro ao buscar jogos da Epic Games:', error);
@@ -551,17 +565,16 @@ async function readLauncherInstalledFile(filePath) {
                     if (item.AppName && item.InstallLocation && !item.AppName.includes('UE_') && !item.AppName.includes('UnrealEngine') && item.InstallLocation !== '') {
                         if (fs.existsSync(item.InstallLocation)) {
                             const gameExe = await findEpicGameExecutable(item.InstallLocation, item.DisplayName || item.AppName);
-                            games.push({
-                                name: item.DisplayName || item.AppName, path: gameExe || item.InstallLocation, appName: item.AppName,
-                                installLocation: item.InstallLocation, platform: 'Epic Games', type: 'game',
-                                size: await getDirectorySize(item.InstallLocation).catch(() => 'N/A')
-                            });
+                            if (gameExe) {
+                                games.push({
+                                    name: item.DisplayName || item.AppName, path: gameExe, appName: item.AppName,
+                                    installLocation: item.InstallLocation, platform: 'Epic Games', type: 'game',
+                                    size: await getDirectorySize(item.InstallLocation)
+                                });
+                            }
                         }
                     }
-                } catch (itemError) {
-                    console.error('Erro ao processar item da Epic:', itemError);
-                    continue;
-                }
+                } catch (itemError) { console.error('Erro ao processar item da Epic:', itemError); }
             }
         }
         return games;
@@ -583,17 +596,16 @@ async function readEpicManifests(manifestsPath) {
                 if (manifest.DisplayName && manifest.InstallLocation && manifest.InstallLocation !== '' && !manifest.AppName?.includes('UE_') && !manifest.AppName?.includes('UnrealEngine')) {
                     if (fs.existsSync(manifest.InstallLocation)) {
                         const gameExe = await findEpicGameExecutable(manifest.InstallLocation, manifest.DisplayName);
-                        games.push({
-                            name: manifest.DisplayName, path: gameExe || manifest.InstallLocation, appName: manifest.AppName || manifest.CatalogItemId,
-                            installLocation: manifest.InstallLocation, platform: 'Epic Games', type: 'game',
-                            size: await getDirectorySize(manifest.InstallLocation).catch(() => 'N/A')
-                        });
+                        if (gameExe) {
+                            games.push({
+                                name: manifest.DisplayName, path: gameExe, appName: manifest.AppName || manifest.CatalogItemId,
+                                installLocation: manifest.InstallLocation, platform: 'Epic Games', type: 'game',
+                                size: await getDirectorySize(manifest.InstallLocation)
+                            });
+                        }
                     }
                 }
-            } catch (manifestError) {
-                console.error(`Erro ao processar manifest ${manifestFile}:`, manifestError);
-                continue;
-            }
+            } catch (manifestError) { console.error(`Erro ao processar manifest ${manifestFile}:`, manifestError); }
         }
         return games;
     } catch (error) {
@@ -603,38 +615,7 @@ async function readEpicManifests(manifestsPath) {
 }
 
 async function findEpicGameExecutable(gamePath, gameName) {
-    try {
-        const rootFiles = fs.readdirSync(gamePath);
-        const gameNameLower = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        for (const file of rootFiles) {
-            if (file.toLowerCase().endsWith('.exe')) {
-                const fileNameLower = file.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (fileNameLower.includes(gameNameLower) || gameNameLower.includes(fileNameLower) || file.toLowerCase().includes('game') || file.toLowerCase().includes(gameName.toLowerCase().split(' ')[0])) {
-                    return path.join(gamePath, file);
-                }
-            }
-        }
-        const commonSubfolders = ['Binaries', 'Binaries/Win64', 'Bin', 'Bin/Win64', 'Game/Binaries/Win64'];
-        for (const subfolder of commonSubfolders) {
-            const subfolderPath = path.join(gamePath, subfolder);
-            if (fs.existsSync(subfolderPath)) {
-                const subFiles = fs.readdirSync(subfolderPath);
-                for (const file of subFiles) {
-                    if (file.toLowerCase().endsWith('.exe')) {
-                        const fileNameLower = file.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        if (fileNameLower.includes(gameNameLower) || gameNameLower.includes(fileNameLower) || file.toLowerCase().includes('game') || (!file.toLowerCase().includes('crash') && !file.toLowerCase().includes('setup') && !file.toLowerCase().includes('uninstall'))) {
-                            return path.join(subfolderPath, file);
-                        }
-                    }
-                }
-            }
-        }
-        const validExe = rootFiles.find(file => file.toLowerCase().endsWith('.exe') && !file.toLowerCase().includes('crash') && !file.toLowerCase().includes('setup') && !file.toLowerCase().includes('uninstall') && !file.toLowerCase().includes('prerequisite'));
-        return validExe ? path.join(gamePath, validExe) : null;
-    } catch (error) {
-        console.error('Erro ao procurar executável da Epic Games:', error);
-        return null;
-    }
+    return findGameExecutable(gamePath, gameName);
 }
 
 function removeDuplicateGames(games) {
@@ -655,31 +636,25 @@ async function getLocalGames() {
             console.log('Pasta StartZone Games não encontrada em C:\\StartZone Games');
             return [];
         }
-        console.log('Buscando jogos locais em:', startZonePath);
-        const files = fs.readdirSync(startZonePath);
+        const files = fs.readdirSync(startZonePath, { withFileTypes: true });
         for (const file of files) {
             try {
-                const filePath = path.join(startZonePath, file);
-                const stats = fs.statSync(filePath);
-                if (stats.isFile()) {
-                    const fileExt = path.extname(file).toLowerCase();
+                const filePath = path.join(startZonePath, file.name);
+                if (file.isFile()) {
+                    const fileExt = path.extname(file.name).toLowerCase();
                     if (fileExt === '.lnk') {
-                        const shortcutInfo = await processShortcut(filePath, file);
+                        const shortcutInfo = processShortcut(filePath, file.name);
                         if (shortcutInfo) localGames.push(shortcutInfo);
                     } else if (fileExt === '.exe') {
-                        const exeInfo = await processExecutable(filePath, file);
+                        const exeInfo = await processExecutable(filePath, file.name);
                         if (exeInfo) localGames.push(exeInfo);
                     }
-                } else if (stats.isDirectory()) {
-                    const folderGames = await processGameFolder(filePath, file);
+                } else if (file.isDirectory()) {
+                    const folderGames = await processGameFolder(filePath, file.name);
                     localGames.push(...folderGames);
                 }
-            } catch (fileError) {
-                console.error(`Erro ao processar ${file}:`, fileError);
-                continue;
-            }
+            } catch (fileError) { console.error(`Erro ao processar ${file.name}:`, fileError); }
         }
-        console.log(`Encontrados ${localGames.length} jogos locais na StartZone Games`);
         return localGames.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
         console.error('Erro ao buscar jogos locais:', error);
@@ -687,18 +662,17 @@ async function getLocalGames() {
     }
 }
 
-async function processShortcut(shortcutPath, fileName) {
+function processShortcut(shortcutPath, fileName) {
     try {
         const gameName = path.basename(fileName, '.lnk');
-        const shortcutTarget = await getShortcutTarget(shortcutPath);
+        const shortcutTarget = getShortcutTarget(shortcutPath);
         if (shortcutTarget && fs.existsSync(shortcutTarget)) {
             return {
-                name: gameName, path: shortcutPath, targetPath: shortcutTarget,
-                platform: 'Local Games', type: 'game', source: 'shortcut',
-                size: await getFileSize(shortcutTarget).catch(() => 'N/A')
+                name: gameName, path: shortcutTarget, platform: 'Local Games', type: 'game', source: 'shortcut',
+                size: getFileSync(shortcutTarget)
             };
         } else {
-            console.log(`Atalho ${fileName} aponta para arquivo inexistente: ${shortcutTarget}`);
+            console.log(`Atalho ${fileName} aponta para arquivo inexistente ou inválido: ${shortcutTarget}`);
             return null;
         }
     } catch (error) {
@@ -713,7 +687,7 @@ async function processExecutable(exePath, fileName) {
         if (fs.existsSync(exePath)) {
             return {
                 name: gameName, path: exePath, platform: 'Local Games', type: 'game',
-                source: 'executable', size: await getFileSize(exePath).catch(() => 'N/A')
+                source: 'executable', size: await getFileSize(exePath)
             };
         }
         return null;
@@ -731,14 +705,14 @@ async function processGameFolder(folderPath, folderName) {
         if (executables.length === 1) {
             games.push({
                 name: folderName, path: path.join(folderPath, executables[0]), platform: 'Local Games',
-                type: 'game', source: 'folder', size: await getDirectorySize(folderPath).catch(() => 'N/A')
+                type: 'game', source: 'folder', size: await getDirectorySize(folderPath)
             });
         } else if (executables.length > 1) {
-            const mainExe = findMainExecutable(executables, folderName);
+            const mainExe = findMainExecutable(executables, folderName, folderPath);
             if (mainExe) {
                 games.push({
                     name: folderName, path: path.join(folderPath, mainExe), platform: 'Local Games',
-                    type: 'game', source: 'folder', size: await getDirectorySize(folderPath).catch(() => 'N/A')
+                    type: 'game', source: 'folder', size: await getDirectorySize(folderPath)
                 });
             }
         }
@@ -749,21 +723,17 @@ async function processGameFolder(folderPath, folderName) {
     }
 }
 
-async function getShortcutTarget(shortcutPath) {
-    return new Promise((resolve) => {
-        const cmd = `powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('${shortcutPath}'); $Shortcut.TargetPath"`;
-        exec(cmd, { timeout: 5000 }, (error, stdout) => {
-            if (error) {
-                console.error('Erro ao ler atalho:', error);
-                resolve(null);
-            } else {
-                resolve(stdout.trim() || null);
-            }
-        });
-    });
+function getShortcutTarget(shortcutPath) {
+    try {
+        const shortcutDetails = shell.readShortcutLink(shortcutPath);
+        return shortcutDetails.target || null;
+    } catch (error) {
+        console.error(`Falha ao ler atalho com API nativa: ${shortcutPath}`, error);
+        return null;
+    }
 }
 
-function findMainExecutable(executables, folderName) {
+function findMainExecutable(executables, folderName, folderPath) {
     const folderNameLower = folderName.toLowerCase().replace(/[^a-z0-9]/g, '');
     for (const exe of executables) {
         const exeNameLower = exe.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -776,13 +746,41 @@ function findMainExecutable(executables, folderName) {
         const found = executables.find(exe => exe.toLowerCase().includes(keyword));
         if (found) return found;
     }
-    return executables[0];
+    let largestSize = 0;
+    let largestExe = executables[0]; 
+    for(const exe of executables){
+        try{
+            const stats = fs.statSync(path.join(folderPath, exe));
+            if(stats.size > largestSize){
+                largestSize = stats.size;
+                largestExe = exe;
+            }
+        } catch(e){
+            console.warn(`Não foi possível obter o tamanho de ${exe} em findMainExecutable: ${e.message}`);
+        }
+    }
+    return largestExe;
+}
+
+function getFileSync(filePath) {
+    try {
+        const stats = fs.statSync(filePath);
+        const bytes = stats.size;
+        if (bytes === 0) return '~0 MB';
+        if (bytes > 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    } catch (error) {
+        return 'N/A';
+    }
 }
 
 async function getFileSize(filePath) {
     try {
         const stats = fs.statSync(filePath);
-        return `${Math.round(stats.size / 1024 / 1024 * 100) / 100}MB`;
+        const bytes = stats.size;
+        if (bytes === 0) return '~0 MB';
+        if (bytes > 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+        return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     } catch (error) {
         return 'N/A';
     }
@@ -793,9 +791,8 @@ async function ensureStartZoneGamesFolder() {
         const startZonePath = path.join('C:', 'StartZone Games');
         if (!fs.existsSync(startZonePath)) {
             fs.mkdirSync(startZonePath, { recursive: true });
-            console.log('Pasta StartZone Games criada em:', startZonePath);
             const readmePath = path.join(startZonePath, 'README.txt');
-            const readmeContent = `StartZone Games - Pasta de Jogos Locais\n==========================================\n\nEsta pasta é utilizada pelo StartZone para organizar seus jogos locais.\n\nVocê pode colocar aqui:\n- Atalhos (.lnk) para seus jogos favoritos\n- Executáveis (.exe) de jogos portáteis\n- Pastas contendo jogos\n\nO StartZone irá detectar automaticamente todos os jogos colocados nesta pasta.\n\nCriado automaticamente pelo StartZone System Info\nData: ${new Date().toLocaleString('pt-BR')}`;
+            const readmeContent = `StartZone Games - Pasta de Jogos Locais\n==========================================\n\nEsta pasta é utilizada pelo StartZone para organizar seus jogos locais.\n\nVocê pode colocar aqui:\n- Atalhos (.lnk) para seus jogos favoritos\n- Executáveis (.exe) de jogos portáteis\n- Pastas contendo jogos\n\nO StartZone irá detectar automaticamente todos os jogos colocados nesta pasta.\n\nCriado automaticamente pelo StartZone Dashboard`;
             fs.writeFileSync(readmePath, readmeContent, 'utf8');
         }
         return startZonePath;
@@ -805,27 +802,25 @@ async function ensureStartZoneGamesFolder() {
     }
 }
 
-async function addGameToStartZone(gameName, gamePath) {
+async function addGameToStartZone(gameDetails) {
+    const { name, path: gamePath } = gameDetails;
     try {
         const startZonePath = await ensureStartZoneGamesFolder();
-        if (!startZonePath) return false;
-        const shortcutName = `${gameName}.lnk`;
+        if (!startZonePath) return { success: false, message: 'Não foi possível criar ou acessar a pasta StartZone Games.'};
+        const shortcutName = `${name}.lnk`;
         const shortcutPath = path.join(startZonePath, shortcutName);
-        const cmd = `powershell -Command "$WshShell = New-Object -comObject WScript.Shell; $Shortcut = $WshShell.CreateShortcut('${shortcutPath}'); $Shortcut.TargetPath = '${gamePath}'; $Shortcut.Save()"`;
-        return new Promise((resolve) => {
-            exec(cmd, { timeout: 5000 }, (error) => {
-                if (error) {
-                    console.error('Erro ao criar atalho:', error);
-                    resolve(false);
-                } else {
-                    console.log(`Atalho criado: ${shortcutPath}`);
-                    resolve(true);
-                }
-            });
-        });
+        
+        const success = shell.writeShortcutLink(shortcutPath, { target: gamePath });
+        if (success) {
+            console.log(`Atalho criado: ${shortcutPath}`);
+            return { success: true, message: 'Atalho criado com sucesso.'};
+        } else {
+            console.error('Falha ao criar atalho usando shell.writeShortcutLink para:', name);
+            return { success: false, message: 'Falha ao criar atalho.'};
+        }
     } catch (error) {
-        console.error('Erro ao adicionar jogo à StartZone:', error);
-        return false;
+        console.error(`Erro ao adicionar jogo ${name} à StartZone:`, error);
+        return { success: false, message: error.message };
     }
 }
 
@@ -842,5 +837,6 @@ module.exports = {
     launchGame,
     ensureStartZoneGamesFolder,
     addGameToStartZone,
-    testGameSearch
+    testGameSearch,
+    getGameDetails,
 };

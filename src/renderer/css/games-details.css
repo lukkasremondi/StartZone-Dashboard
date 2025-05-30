@@ -1,0 +1,138 @@
+/* Estilos para a tela de detalhes do jogo */
+
+#game-details-screen .screen-header {
+    /* Mantém a consistência com as outras telas */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+#game-details-screen .details-content-container {
+    display: grid;
+    /* Duas colunas: a da capa tem um tamanho fixo, a de informações ocupa o resto */
+    grid-template-columns: 320px 1fr;
+    gap: 60px; /* Espaço entre a capa e as informações */
+    width: 100%;
+    height: calc(100% - 90px); /* Ocupa a altura restante abaixo do header */
+    padding-top: 40px;
+}
+
+/* Coluna da Esquerda (Capa e Ações) */
+.details-left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.details-cover-container {
+    width: 100%;
+    aspect-ratio: 3 / 4; /* Proporção de pôster vertical */
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+#details-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.details-actions {
+    display: flex;
+    flex-direction: column;
+}
+
+.play-button {
+    width: 100%;
+    padding: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #000;
+    background: #00d4ff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    box-shadow: 0 4px 20px rgba(0, 212, 255, 0.3);
+}
+
+.play-button:hover,
+.play-button:focus {
+    background: #ffffff;
+    color: #000;
+    transform: scale(1.05);
+    box-shadow: 0 8px 30px rgba(0, 212, 255, 0.4);
+}
+
+.play-icon {
+    font-size: 18px;
+}
+
+
+/* Coluna da Direita (Informações) */
+.details-right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 35px;
+    overflow-y: auto; /* Adiciona scroll se o conteúdo for muito grande */
+    padding-right: 20px; /* Espaço para a barra de rolagem */
+}
+
+.details-section h2 {
+    font-size: 24px;
+    color: #00d4ff;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#details-summary {
+    font-size: 16px;
+    line-height: 1.8;
+    color: #d1d5db; /* Um cinza claro para melhor legibilidade */
+}
+
+.details-metadata {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Duas colunas para os metadados */
+    gap: 20px;
+}
+
+.meta-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.meta-item strong {
+    display: block;
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.meta-item .meta-value {
+    font-size: 16px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+/* Spinner de carregamento para o resumo */
+.loading-spinner-small {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(0, 212, 255, 0.2);
+    border-top-color: #00d4ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+}

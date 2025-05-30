@@ -1,41 +1,41 @@
-let cachedGames = []; // Cache persistente para a lista de jogos.
-let isFetching = false; // Flag para evitar buscas simultâneas.
-let fetchPromise = null; // Promise para garantir que todas as chamadas aguardem a mesma busca
+// A variável 'cachedGames' foi movida para dentro da classe GamesManager
+// para que o main.js possa acessá-la através da instância global.
 
-/**
- * Busca os jogos do backend APENAS UMA VEZ e os armazena no cache.
- * Em chamadas futuras, retorna a lista do cache instantaneamente.
- */
-async function fetchAndCacheGames() {
-    if (cachedGames.length > 0) {
-        return cachedGames;
+async function fetchAndCacheGames(manager) {
+    // Agora a função recebe a instância do manager como argumento
+    if (manager.cachedGames.length > 0) {
+        return manager.cachedGames;
     }
-    if (isFetching && fetchPromise) {
-        return await fetchPromise;
+    if (manager.isFetching && manager.fetchPromise) {
+        return await manager.fetchPromise;
     }
-    console.log('Buscando e cacheando a lista de jogos pela primeira vez...');
-    isFetching = true;
-    fetchPromise = (async () => {
+    console.log('GamesManager: Buscando e cacheando a lista de jogos pela primeira vez...');
+    manager.isFetching = true;
+
+    manager.fetchPromise = (async () => {
         try {
-            console.log('Chamando window.electronAPI.getInstalledGames()...');
+            console.log('GamesManager: Chamando window.electronAPI.getInstalledGames()...');
             const gamesFromBackend = await window.electronAPI.getInstalledGames();
-            cachedGames = gamesFromBackend || [];
-            console.log(`Cache de jogos preenchido com ${cachedGames.length} itens.`);
-            return cachedGames;
+            manager.cachedGames = gamesFromBackend || [];
+            console.log(`GamesManager: Cache de jogos preenchido com ${manager.cachedGames.length} itens.`);
+            return manager.cachedGames;
         } catch (error) {
-            console.error("Erro fatal ao buscar jogos para o cache:", error);
-            cachedGames = [];
-            return cachedGames;
+            console.error("GamesManager: Erro fatal ao buscar jogos para o cache:", error);
+            manager.cachedGames = [];
+            return manager.cachedGames;
         } finally {
-            isFetching = false;
-            fetchPromise = null;
+            manager.isFetching = false;
+            manager.fetchPromise = null;
         }
     })();
-    return await fetchPromise;
+    return await manager.fetchPromise;
 }
 
 class GamesManager {
     constructor() {
+        this.cachedGames = []; // AGORA É UMA PROPRIEDADE DA CLASSE
+        this.fetchPromise = null;
+        this.isFetching = false;
         this.filteredGames = [];
         this.currentFilter = 'all';
         this.searchTerm = '';
@@ -44,11 +44,11 @@ class GamesManager {
     }
 
     init() {
+        console.log("GamesManager: Instância criada e inicializada.");
         this.bindEvents();
         this.createSearchInterface();
         this.createFilterInterface();
 
-        // ADIÇÃO: Configura os listeners para os eventos de estado do jogo
         if (window.electronAPI) {
             window.electronAPI.onGameStarted((game) => this.setGameState(game, true));
             window.electronAPI.onGameStopped((game) => this.setGameState(game, false));
@@ -61,8 +61,6 @@ class GamesManager {
         if (backButton) {
             backButton.addEventListener('click', () => this.goBack());
         }
-        // O listener de 'screenChanged' foi removido para evitar chamadas duplicadas,
-        // já que o main.js agora chama loadGames() diretamente.
     }
 
     createSearchInterface() {
@@ -113,8 +111,8 @@ class GamesManager {
         this.showLoading();
 
         try {
-            await fetchAndCacheGames();
-            this.filteredGames = [...cachedGames];
+            await fetchAndCacheGames(this); // Passa a instância para a função
+            this.filteredGames = [...this.cachedGames];
             this.currentFilter = 'all';
             this.searchTerm = '';
             
@@ -137,11 +135,11 @@ class GamesManager {
     }
 
     async filterGames() {
-        if (cachedGames.length === 0) {
-            await fetchAndCacheGames();
+        if (this.cachedGames.length === 0) {
+            await fetchAndCacheGames(this);
         }
         
-        let filtered = [...cachedGames];
+        let filtered = [...this.cachedGames];
 
         if (this.currentFilter !== 'all') {
             const platformMap = {
@@ -191,12 +189,10 @@ class GamesManager {
         gameDiv.className = 'game-item';
         gameDiv.setAttribute('tabindex', '0');
 
-        // AJUSTE: Adiciona um identificador único para podermos encontrar este elemento depois
         if (game.path) {
             try {
                 gameDiv.dataset.gameId = btoa(game.path);
             } catch (e) {
-                // Fallback para nomes de arquivos
                 gameDiv.dataset.gameId = game.path.replace(/[^a-zA-Z0-9]/g, '');
             }
         }
@@ -236,7 +232,20 @@ class GamesManager {
             this.launchGame(game); 
         });
         gameElement.addEventListener('dblclick', () => { this.launchGame(game); });
-        gameElement.addEventListener('keydown', (e) => { if (e.key === 'Enter') { this.launchGame(game); } });
+        
+        // AJUSTE: Teclado - 'Enter' inicia o jogo, 'Espaço' abre detalhes.
+        gameElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { 
+                e.preventDefault();
+                this.launchGame(game); 
+            }
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (window.showDetailsForFocusedGame) {
+                    window.showDetailsForFocusedGame();
+                }
+            }
+        });
     }
 
     async launchGame(game) {
@@ -244,7 +253,6 @@ class GamesManager {
             this.showNotification('Erro: Caminho do jogo não encontrado', 'error');
             return;
         }
-        // Não mostra a notificação de 'Iniciando...' aqui, pois o overlay já é um feedback.
         try {
             await window.electronAPI.launchGame(game);
         } catch (error) {
@@ -279,7 +287,6 @@ class GamesManager {
         }
     }
 
-    // ADIÇÃO: Nova função para gerenciar o estado visual do jogo
     setGameState(game, isRunning) {
         if (!game || !game.path) return;
         
@@ -304,6 +311,7 @@ class GamesManager {
     }
 }
 
+// A inicialização do GamesManager agora é feita pelo main.js para garantir a ordem correta.
 document.addEventListener('DOMContentLoaded', () => {
-    // A inicialização do GamesManager agora é feita pelo main.js para garantir a ordem correta.
+    // A instância é criada no main.js
 });

@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/home-screen.css">
     <link rel="stylesheet" href="css/games.css">
     <link rel="stylesheet" href="css/programs.css">
+    <link rel="stylesheet" href="css/games-details.css"> 
 </head>
 <body>
     <header id="system-header">
@@ -63,7 +64,6 @@
         <div id="games-screen" class="screen">
             <div class="screen-header">
                 <h1>Jogos Disponíveis</h1>
-                <div class="back-button" id="games-back">Voltar</div>
             </div>
             <div class="content-grid" id="games-grid">
                 <div class="loading">Carregando jogos...</div>
@@ -85,36 +85,82 @@
                     <div id="programs-count" class="programs-count">0</div>
                 </div>
                 <div class="programs-categories" id="programs-categories">
-                    </div>
+                </div>
             </div>
             <div class="screen-header">
                 <h1>Programas Instalados</h1>
-                <div class="back-button" id="programs-back">Voltar</div>
             </div>
             <div class="content-grid" id="programs-grid">
-                 </div>
+            </div>
         </div>
 
         <div id="shutdown-screen" class="screen">
             <div class="screen-header">
                 <h1>Opções de Energia</h1>
-                <div class="back-button" id="shutdown-back">Voltar</div>
             </div>
             <div class="power-options">
-                <div class="power-option" id="shutdown-pc">
+                <div class="power-option" id="shutdown-pc" tabindex="0">
                     <div class="power-icon">🔴</div>
                     <div class="power-text">Desligar PC</div>
                 </div>
-                <div class="power-option" id="restart-pc">
+                <div class="power-option" id="restart-pc" tabindex="1">
                     <div class="power-icon">🔄</div>
                     <div class="power-text">Reiniciar PC</div>
                 </div>
-                <div class="power-option" id="minimize-app">
+                <div class="power-option" id="minimize-app" tabindex="2">
                     <div class="power-icon">📱</div>
                     <div class="power-text">Minimizar</div>
                 </div>
             </div>
         </div>
+        
+        <div id="game-details-screen" class="screen">
+            <div class="screen-header">
+                <h1 id="details-game-title"></h1>
+            </div>
+            <div class="details-content-container">
+                <div class="details-left-column">
+                    <div class="details-cover-container">
+                        <img id="details-cover-img" src="" alt="Capa do Jogo">
+                    </div>
+                </div>
+                <div class="details-right-column">
+                    <div class="details-section">
+                        <h2>Sobre o Jogo</h2>
+                        <p id="details-summary">
+                            </p>
+                    </div>
+                    <div class="details-section">
+                        <h2>Informações</h2>
+                        <div class="details-metadata">
+                            <div class="meta-item">
+                                <strong>Plataforma:</strong>
+                                <span id="details-platform"></span>
+                            </div>
+                            <div class="meta-item">
+                                <strong>Tamanho:</strong>
+                                <span id="details-size"></span>
+                            </div>
+                            <div class="meta-item">
+                                <strong>Desenvolvedora:</strong>
+                                <span id="details-developer"></span>
+                            </div>
+                            <div class="meta-item">
+                                <strong>Lançamento:</strong>
+                                <span id="details-release-date"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="details-actions">
+                        <button id="details-play-button" class="play-button" tabindex="0">
+                            <span class="play-icon">▶</span>
+                            JOGAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <footer id="system-footer">
@@ -123,8 +169,7 @@
         </div>
         <div class="storage-info" id="storage-info">
         </div>
-        <div class="exit-button" id="exit-app" tabindex="999">
-            Sair
+        <div class="footer-actions" id="footer-actions">
         </div>
     </footer>
 
@@ -133,14 +178,13 @@
         <div class="loading-text">Carregando...</div>
     </div>
 
-
     <div id="notification-container"></div>
-
 
     <script src="js/programs.js"></script>
     <script src="js/games.js"></script>
-    <script src="js/main.js"></script>
+    <script src="js/games-details.js"></script>
     <script src="js/gamepad.js"></script>
     <script src="js/navigation.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
