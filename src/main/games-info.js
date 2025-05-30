@@ -2,228 +2,252 @@ const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+// ADIÇÃO 1/2: Dependências para buscar capas e formatar o caminho para URL
+const url = require('url');
+const { fetchAndCacheCover } = require('./games-covers.js');
+
 
 async function getInstalledGames() {
-  const games = [];
-  console.log('🎮 Iniciando busca por jogos instalados...');
-  
-  try {
-      // Array para armazenar as promessas de busca
-      const searchPromises = [];
-      
-      // Função helper para buscar com timeout
-      const searchWithTimeout = async (searchFunction, name, timeout = 10000) => {
-          return Promise.race([
-              searchFunction(),
-              new Promise((_, reject) => 
-                  setTimeout(() => reject(new Error(`Timeout na busca de ${name}`)), timeout)
-              )
-          ]);
-      };
-      
-      // Busca jogos de todas as plataformas em paralelo
-      console.log('Iniciando busca em paralelo...');
-      
-      // Steam
-      searchPromises.push(
-          searchWithTimeout(getSteamGames, 'Steam')
-              .then(steamGames => {
-                  console.log(`✓ Steam: ${steamGames?.length || 0} jogos encontrados`);
-                  return { platform: 'steam', games: steamGames || [] };
-              })
-              .catch(error => {
-                  console.error('✗ Erro Steam:', error.message);
-                  return { platform: 'steam', games: [] };
-              })
-      );
-      
-      // Epic Games
-      searchPromises.push(
-          searchWithTimeout(getEpicGames, 'Epic Games')
-              .then(epicGames => {
-                  console.log(`✓ Epic: ${epicGames?.length || 0} jogos encontrados`);
-                  return { platform: 'epic', games: epicGames || [] };
-              })
-              .catch(error => {
-                  console.error('✗ Erro Epic:', error.message);
-                  return { platform: 'epic', games: [] };
-              })
-      );
-      
-      // Jogos Locais
-      searchPromises.push(
-          searchWithTimeout(getLocalGames, 'Jogos Locais')
-              .then(localGames => {
-                  console.log(`✓ Local: ${localGames?.length || 0} jogos encontrados`);
-                  return { platform: 'local', games: localGames || [] };
-              })
-              .catch(error => {
-                  console.error('✗ Erro Local:', error.message);
-                  return { platform: 'local', games: [] };
-              })
-      );
-      
-      // Aguardar todas as buscas
-      const results = await Promise.allSettled(searchPromises);
-      
-      // Processar resultados
-      let totalFound = 0;
-      results.forEach(result => {
-          if (result.status === 'fulfilled' && result.value.games) {
-              const platformGames = result.value.games;
-              if (Array.isArray(platformGames)) {
-                  games.push(...platformGames);
-                  totalFound += platformGames.length;
-                  console.log(`📊 ${result.value.platform}: ${platformGames.length} jogos adicionados`);
-              } else {
-                  console.warn(`⚠️ ${result.value.platform}: resultado não é array:`, typeof platformGames);
-              }
-          } else {
-              console.warn(`⚠️ Falha na busca:`, result.reason?.message || 'Erro desconhecido');
-          }
-      });
-      
-      console.log(`📋 Total bruto coletado: ${games.length} jogos`);
-      
-      // Verificar se temos jogos
-      if (games.length === 0) {
-          console.warn('⚠️ Nenhum jogo foi encontrado em nenhuma plataforma');
-          
-          // Teste de fallback - tentar buscar pelo menos um jogo local simples
-          try {
-              console.log('🔍 Tentando busca de fallback...');
-              const fallbackGames = await getLocalGames();
-              if (fallbackGames && fallbackGames.length > 0) {
-                  games.push(...fallbackGames);
-                  console.log(`✓ Fallback: ${fallbackGames.length} jogos encontrados`);
-              }
-          } catch (fallbackError) {
-              console.error('✗ Fallback também falhou:', fallbackError);
-          }
-      }
-      
-      // Remove duplicatas baseado no nome (case-insensitive)
-      const uniqueGames = removeDuplicateGamesByName(games);
-      console.log(`🔧 Após remoção de duplicatas: ${uniqueGames.length} jogos`);
-      
-      // Ordena alfabeticamente
-      const sortedGames = uniqueGames.sort((a, b) => {
-          if (!a.name || !b.name) return 0;
-          return a.name.localeCompare(b.name, 'pt-BR');
-      });
-      
-      // Log final detalhado
-      console.log(`🎮 RESULTADO FINAL: ${sortedGames.length} jogos únicos encontrados`);
-      
-      if (sortedGames.length > 0) {
-          console.log('📊 Distribuição por plataforma:');
-          const stats = getGameStatistics(sortedGames);
-          Object.entries(stats).forEach(([platform, count]) => {
-              console.log(`   ${platform}: ${count} jogos`);
-          });
-          
-          // Mostrar primeiros 5 jogos como amostra
-          console.log('🎯 Amostra de jogos encontrados:');
-          sortedGames.slice(0, 5).forEach((game, index) => {
-              console.log(`   ${index + 1}. ${game.name} | ${game.path?.substring(0, 50)}...`);
-          });
-          
-          if (sortedGames.length > 5) {
-              console.log(`   ... e mais ${sortedGames.length - 5} jogos`);
-          }
-      } else {
-          console.error('❌ NENHUM JOGO FOI ENCONTRADO!');
-          console.log('🔍 Verificações sugeridas:');
-          console.log('   1. Steam está instalado?');
-          console.log('   2. Epic Games Launcher está instalado?');
-          console.log('   3. Existem jogos nas pastas de jogos locais?');
-          console.log('   4. As funções getSteamGames, getEpicGames e getLocalGames estão funcionando?');
-      }
-      
-      return sortedGames;
-      
-  } catch (error) {
-      console.error('💥 ERRO CRÍTICO ao buscar jogos instalados:', error);
-      console.error('Stack trace:', error.stack);
-      
-      // Tentar retornar pelo menos os jogos que conseguimos coletar
-      console.log(`🚨 Retornando ${games.length} jogos coletados antes do erro`);
-      return games;
-  }
+    const games = [];
+    console.log('🎮 Iniciando busca por jogos instalados...');
+    
+    try {
+        // Array para armazenar as promessas de busca
+        const searchPromises = [];
+        
+        // Função helper para buscar com timeout
+        const searchWithTimeout = async (searchFunction, name, timeout = 10000) => {
+            return Promise.race([
+                searchFunction(),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error(`Timeout na busca de ${name}`)), timeout)
+                )
+            ]);
+        };
+        
+        // Busca jogos de todas as plataformas em paralelo
+        console.log('Iniciando busca em paralelo...');
+        
+        // Steam
+        searchPromises.push(
+            searchWithTimeout(getSteamGames, 'Steam')
+                .then(steamGames => {
+                    console.log(`✓ Steam: ${steamGames?.length || 0} jogos encontrados`);
+                    return { platform: 'steam', games: steamGames || [] };
+                })
+                .catch(error => {
+                    console.error('✗ Erro Steam:', error.message);
+                    return { platform: 'steam', games: [] };
+                })
+        );
+        
+        // Epic Games
+        searchPromises.push(
+            searchWithTimeout(getEpicGames, 'Epic Games')
+                .then(epicGames => {
+                    console.log(`✓ Epic: ${epicGames?.length || 0} jogos encontrados`);
+                    return { platform: 'epic', games: epicGames || [] };
+                })
+                .catch(error => {
+                    console.error('✗ Erro Epic:', error.message);
+                    return { platform: 'epic', games: [] };
+                })
+        );
+        
+        // Jogos Locais
+        searchPromises.push(
+            searchWithTimeout(getLocalGames, 'Jogos Locais')
+                .then(localGames => {
+                    console.log(`✓ Local: ${localGames?.length || 0} jogos encontrados`);
+                    return { platform: 'local', games: localGames || [] };
+                })
+                .catch(error => {
+                    console.error('✗ Erro Local:', error.message);
+                    return { platform: 'local', games: [] };
+                })
+        );
+        
+        // Aguardar todas as buscas
+        const results = await Promise.allSettled(searchPromises);
+        
+        // Processar resultados
+        let totalFound = 0;
+        results.forEach(result => {
+            if (result.status === 'fulfilled' && result.value.games) {
+                const platformGames = result.value.games;
+                if (Array.isArray(platformGames)) {
+                    games.push(...platformGames);
+                    totalFound += platformGames.length;
+                    console.log(`📊 ${result.value.platform}: ${platformGames.length} jogos adicionados`);
+                } else {
+                    console.warn(`⚠️ ${result.value.platform}: resultado não é array:`, typeof platformGames);
+                }
+            } else {
+                console.warn(`⚠️ Falha na busca:`, result.reason?.message || 'Erro desconhecido');
+            }
+        });
+        
+        console.log(`📋 Total bruto coletado: ${games.length} jogos`);
+        
+        // Verificar se temos jogos
+        if (games.length === 0) {
+            console.warn('⚠️ Nenhum jogo foi encontrado em nenhuma plataforma');
+            
+            // Teste de fallback - tentar buscar pelo menos um jogo local simples
+            try {
+                console.log('🔍 Tentando busca de fallback...');
+                const fallbackGames = await getLocalGames();
+                if (fallbackGames && fallbackGames.length > 0) {
+                    games.push(...fallbackGames);
+                    console.log(`✓ Fallback: ${fallbackGames.length} jogos encontrados`);
+                }
+            } catch (fallbackError) {
+                console.error('✗ Fallback também falhou:', fallbackError);
+            }
+        }
+        
+        // Remove duplicatas baseado no nome (case-insensitive)
+        const uniqueGames = removeDuplicateGamesByName(games);
+        console.log(`🔧 Após remoção de duplicatas: ${uniqueGames.length} jogos`);
+        
+
+        // ADIÇÃO 2/2: Bloco para buscar as capas dos jogos únicos encontrados
+        console.log('🖼️  Iniciando busca de capas para jogos únicos...');
+        const gamesWithCoversPromises = uniqueGames.map(async (game) => {
+            const localCoverPath = await fetchAndCacheCover(game.name);
+            // Converte o caminho local para uma URL que o HTML/CSS possa usar
+            const coverUrl = localCoverPath ? url.pathToFileURL(localCoverPath).href : null;
+            return {
+                ...game,
+                coverPath: coverUrl, // Adiciona a nova propriedade ao objeto do jogo
+            };
+        });
+
+        // Aguarda todas as buscas de capa terminarem
+        const enrichedGames = await Promise.all(gamesWithCoversPromises);
+        console.log('✅ Busca de capas finalizada.');
+        
+
+        // Ordena alfabeticamente (usando a lista já com as capas)
+        const sortedGames = enrichedGames.sort((a, b) => {
+            if (!a.name || !b.name) return 0;
+            return a.name.localeCompare(b.name, 'pt-BR');
+        });
+        
+        // Log final detalhado
+        console.log(`🎮 RESULTADO FINAL: ${sortedGames.length} jogos únicos encontrados`);
+        
+        if (sortedGames.length > 0) {
+            console.log('📊 Distribuição por plataforma:');
+            const stats = getGameStatistics(sortedGames);
+            Object.entries(stats).forEach(([platform, count]) => {
+                console.log(`   ${platform}: ${count} jogos`);
+            });
+            
+            // Mostrar primeiros 5 jogos como amostra
+            console.log('🎯 Amostra de jogos encontrados:');
+            sortedGames.slice(0, 5).forEach((game, index) => {
+                console.log(`   ${index + 1}. ${game.name} | ${game.path?.substring(0, 50)}...`);
+            });
+            
+            if (sortedGames.length > 5) {
+                console.log(`   ... e mais ${sortedGames.length - 5} jogos`);
+            }
+        } else {
+            console.error('❌ NENHUM JOGO FOI ENCONTRADO!');
+            console.log('🔍 Verificações sugeridas:');
+            console.log('   1. Steam está instalado?');
+            console.log('   2. Epic Games Launcher está instalado?');
+            console.log('   3. Existem jogos nas pastas de jogos locais?');
+            console.log('   4. As funções getSteamGames, getEpicGames e getLocalGames estão funcionando?');
+        }
+        
+        return sortedGames;
+        
+    } catch (error) {
+        console.error('💥 ERRO CRÍTICO ao buscar jogos instalados:', error);
+        console.error('Stack trace:', error.stack);
+        
+        // Tentar retornar pelo menos os jogos que conseguimos coletar
+        console.log(`🚨 Retornando ${games.length} jogos coletados antes do erro`);
+        return games;
+    }
 }
 
+// --- TODAS AS OUTRAS FUNÇÕES (testGameSearch, removeDuplicateGamesByName, etc.) CONTINUAM EXATAMENTE IGUAIS AO SEU CÓDIGO ---
+
 async function testGameSearch() {
-  console.log('🧪 TESTE DE BUSCA DE JOGOS');
-  
-  const tests = [
-      { name: 'Steam', func: getSteamGames },
-      { name: 'Epic', func: getEpicGames },
-      { name: 'Local', func: getLocalGames }
-  ];
-  
-  const results = {};
-  
-  for (const test of tests) {
-      try {
-          console.log(`🔍 Testando ${test.name}...`);
-          const startTime = Date.now();
-          const result = await test.func();
-          const duration = Date.now() - startTime;
-          
-          results[test.name] = {
-              success: true,
-              count: result?.length || 0,
-              duration: duration,
-              sample: result?.slice(0, 2)
-          };
-          
-          console.log(`✅ ${test.name}: ${result?.length || 0} jogos em ${duration}ms`);
-      } catch (error) {
-          results[test.name] = {
-              success: false,
-              error: error.message,
-              duration: null
-          };
-          console.error(`❌ ${test.name}: ${error.message}`);
-      }
-  }
-  
-  return results;
+    console.log('🧪 TESTE DE BUSCA DE JOGOS');
+    
+    const tests = [
+        { name: 'Steam', func: getSteamGames },
+        { name: 'Epic', func: getEpicGames },
+        { name: 'Local', func: getLocalGames }
+    ];
+    
+    const results = {};
+    
+    for (const test of tests) {
+        try {
+            console.log(`🔍 Testando ${test.name}...`);
+            const startTime = Date.now();
+            const result = await test.func();
+            const duration = Date.now() - startTime;
+            
+            results[test.name] = {
+                success: true,
+                count: result?.length || 0,
+                duration: duration,
+                sample: result?.slice(0, 2)
+            };
+            
+            console.log(`✅ ${test.name}: ${result?.length || 0} jogos em ${duration}ms`);
+        } catch (error) {
+            results[test.name] = {
+                success: false,
+                error: error.message,
+                duration: null
+            };
+            console.error(`❌ ${test.name}: ${error.message}`);
+        }
+    }
+    
+    return results;
 }
 
 function removeDuplicateGamesByName(games) {
-  const seen = new Map();
-  const uniqueGames = [];
-  
-  for (const game of games) {
-      if (!game || !game.name) continue;
-      
-      const normalizedName = game.name.toLowerCase().trim()
-          .replace(/[^\w\s]/g, '') // Remove caracteres especiais
-          .replace(/\s+/g, ' ');   // Normaliza espaços
-      
-      if (!seen.has(normalizedName)) {
-          seen.set(normalizedName, true);
-          uniqueGames.push(game);
-      } else {
-          const existingIndex = uniqueGames.findIndex(g => 
-              g.name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ') === normalizedName
-          );
-          
-          if (existingIndex !== -1) {
-              const existing = uniqueGames[existingIndex];
-              const platformPriority = { 'Steam': 3, 'Epic Games': 2, 'Local Games': 1 };
-              const currentPriority = platformPriority[game.platform] || 0;
-              const existingPriority = platformPriority[existing.platform] || 0;
-              
-              if (currentPriority > existingPriority) {
-                  uniqueGames[existingIndex] = game;
-              }
-          }
-      }
-  }
-  
-  return uniqueGames;
+    const seen = new Map();
+    const uniqueGames = [];
+    
+    for (const game of games) {
+        if (!game || !game.name) continue;
+        
+        const normalizedName = game.name.toLowerCase().trim()
+            .replace(/[^\w\s]/g, '') // Remove caracteres especiais
+            .replace(/\s+/g, ' ');   // Normaliza espaços
+        
+        if (!seen.has(normalizedName)) {
+            seen.set(normalizedName, true);
+            uniqueGames.push(game);
+        } else {
+            const existingIndex = uniqueGames.findIndex(g => 
+                g.name.toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ') === normalizedName
+            );
+            
+            if (existingIndex !== -1) {
+                const existing = uniqueGames[existingIndex];
+                const platformPriority = { 'Steam': 3, 'Epic Games': 2, 'Local Games': 1 };
+                const currentPriority = platformPriority[game.platform] || 0;
+                const existingPriority = platformPriority[existing.platform] || 0;
+                
+                if (currentPriority > existingPriority) {
+                    uniqueGames[existingIndex] = game;
+                }
+            }
+        }
+    }
+    
+    return uniqueGames;
 }
 
 function getGameStatistics(games) {
@@ -294,9 +318,6 @@ async function launchGame(game) {
         });
     });
 }
-
-// ... (todas as outras funções de busca de jogos como getSteamGames, getEpicGames, getLocalGames e suas sub-funções)
-// NOTE: As funções abaixo são as mesmas que você forneceu, sem alterações na lógica.
 
 async function getSteamGames() {
     try {
@@ -783,17 +804,17 @@ async function addGameToStartZone(gameName, gamePath) {
 }
 
 module.exports = {
-  getInstalledGames,
-  getSteamGames,
-  getEpicGames,
-  getLocalGames,
-  removeDuplicateGamesByName,
-  getGameStatistics,
-  getGamesByPlatform,
-  searchGamesByName,
-  getGamesSummary,
-  launchGame,
-  ensureStartZoneGamesFolder,
-  addGameToStartZone,
-  testGameSearch
+    getInstalledGames,
+    getSteamGames,
+    getEpicGames,
+    getLocalGames,
+    removeDuplicateGamesByName,
+    getGameStatistics,
+    getGamesByPlatform,
+    searchGamesByName,
+    getGamesSummary,
+    launchGame,
+    ensureStartZoneGamesFolder,
+    addGameToStartZone,
+    testGameSearch
 };

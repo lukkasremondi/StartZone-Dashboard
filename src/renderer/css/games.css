@@ -1,26 +1,23 @@
 /*
- * Contém estilos que se aplicam APENAS aos controles
- * dentro do cabeçalho da tela de jogos, com base nas classes
- * geradas pelo games.js.
+ * Contém estilos que se aplicam APENAS aos controles e ao grid
+ * da tela de jogos.
 */
 
-/* Garante que o cabeçalho use Flexbox para alinhar título, busca e filtros */
+/* --- CONTROLES DO HEADER (SEU CÓDIGO ORIGINAL) --- */
+
 #games-screen .screen-header {
     display: flex;
     align-items: center;
-    gap: 30px; /* Espaço entre o título e o botão "Voltar" */
+    gap: 30px;
 }
 
-/* Container da busca, criado pelo games.js */
-/* O truque 'margin-left: auto' empurra a busca e os filtros para a direita */
 #games-screen .search-container {
     margin-left: auto;
-    position: relative; /* Necessário para o botão de limpar */
+    position: relative;
 }
 
-/* Estilo do input de pesquisa */
 #games-screen .search-input {
-    padding: 10px 35px 10px 18px; /* Espaço à direita para o '✕' */
+    padding: 10px 35px 10px 18px;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 10px;
@@ -36,7 +33,6 @@
     background: rgba(0, 212, 255, 0.08);
 }
 
-/* Botão para limpar a busca */
 #games-screen .search-clear {
     position: absolute;
     right: 10px;
@@ -54,12 +50,10 @@
     color: #ffffff;
 }
 
-/* Container geral dos filtros */
 #games-screen .filter-container {
-    margin-left: 20px; /* Espaço entre a busca e os filtros */
+    margin-left: 20px;
 }
 
-/* A "cápsula" que envolve os botões. A classe correta é '.filter-tabs' */
 #games-screen .filter-tabs {
     display: flex;
     gap: 10px;
@@ -68,7 +62,6 @@
     border-radius: 10px;
 }
 
-/* O estilo para os botões. A classe correta é '.filter-tab' */
 #games-screen .filter-tab {
     padding: 8px 16px;
     background-color: transparent;
@@ -87,10 +80,162 @@
     color: #ffffff;
 }
 
-/* O estilo para o botão ativo. A classe é '.filter-tab.active' */
 #games-screen .filter-tab.active {
     background-color: #00d4ff;
     color: #000000;
     font-weight: 700;
     box-shadow: 0 2px 10px rgba(0, 212, 255, 0.3);
+}
+
+/* --- ESTILOS CORRIGIDOS E MELHORADOS PARA O GRID E CARDS --- */
+
+#games-grid {
+    padding: 40px;
+    display: grid;
+    
+    /* Cria colunas que têm no mínimo 240px, mas se esticam para preencher o espaço.
+       Quando não cabem mais na linha, uma nova linha é criada (wrap). */
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    
+    /* A LINHA MAIS IMPORTANTE: Define que as linhas não devem encolher.
+       Elas terão a altura exata do seu conteúdo (o card). */
+    grid-auto-rows: min-content;
+    
+    gap: 35px;
+}
+
+/* O card individual de cada jogo */
+.game-item {
+    background: linear-gradient(145deg, rgba(30, 35, 60, 0.7), rgba(20, 22, 40, 0.5));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    backdrop-filter: blur(5px);
+}
+
+.game-item:hover,
+.game-item:focus {
+    transform: translateY(-8px) scale(1.05);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+    border-color: #00d4ff;
+    outline: none;
+}
+
+/* O container da capa do jogo */
+.game-cover {
+    width: 100%;
+    aspect-ratio: 3 / 4; 
+    position: relative;
+    background-color: #1a1d3a;
+}
+
+/* A imagem da capa em si */
+.game-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; 
+    transition: transform 0.3s ease;
+}
+
+.game-item:hover .game-cover-img {
+    transform: scale(1.05);
+}
+
+/* Informações abaixo da capa */
+.game-info {
+    padding: 15px;
+    background-color: rgba(10, 12, 25, 0.5);
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 5px;
+}
+
+.game-details {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+
+.game-platform {
+    font-size: 12px;
+    color: #00d4ff;
+    margin-top: auto;
+    font-weight: 500;
+}
+
+/* Círculo da plataforma no canto da capa */
+.platform-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    z-index: 2;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Overlay que aparece ao passar o mouse */
+.game-cover-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+.game-item:hover .game-cover-overlay {
+    opacity: 1;
+}
+
+/* Botão de "Play" */
+.game-launch-btn {
+    background-color: rgba(0, 212, 255, 0.8);
+    border: none;
+    color: #fff;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 4px;
+    transform: scale(0.8);
+    opacity: 0;
+}
+
+.game-item:hover .game-launch-btn {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.game-launch-btn:hover {
+    background-color: #00d4ff;
+    transform: scale(1.1);
 }
