@@ -16,20 +16,18 @@ async function translateText(text, targetLang = 'pt-BR', sourceLang = 'en') {
     console.log(`[Game-Info] Tentando traduzir texto de ${sourceLang} para ${targetLang}...`);
     try {
         const encodedText = encodeURIComponent(text);
-        // Adiciona um parâmetro de email fictício, às vezes ajuda com limites da MyMemory
         const apiUrl = `https://api.mymemory.translated.net/get?q=${encodedText}&langpair=${sourceLang}|${targetLang}&de=lucas.remondi@outlook.com`;
         
         const response = await axios.get(apiUrl);
         
         if (response.data && response.data.responseData && response.data.responseData.translatedText) {
             let translated = response.data.responseData.translatedText;
-            // Verifica se a tradução realmente ocorreu e não é um aviso de limite
             if (response.data.responseStatus === 200 && !translated.toUpperCase().includes("MYMEMORY WARNING")) {
                  console.log(`[Game-Info] Texto traduzido com sucesso.`);
                 return translated;
             } else {
                 console.warn("[Game-Info] MyMemory API: Limite de traduções ou aviso presente. Usando texto original.", response.data.responseDetails || "");
-                return text; // Retorna o texto original se aviso de limite ou erro
+                return text; 
             }
         } else {
             console.warn('[Game-Info] MyMemory API não retornou texto traduzido ou falhou:', response.data);
@@ -312,12 +310,9 @@ function slugify(text) {
         .replace(/-+$/, '');
 }
 
-// AJUSTE NA LÓGICA DE BUSCA E TRADUÇÃO DA DESCRIÇÃO
 async function getGameDetails(gameName) {
     if (!gameName) return null;
-    
     const slug = slugify(gameName);
-    // Sempre busca em inglês primeiro na RAWG
     const rawgUrl = `https://api.rawg.io/api/games/${slug}?key=${RAWG_API_KEY}`; 
     
     let rawDescription = 'Nenhuma descrição disponível.';
@@ -331,34 +326,29 @@ async function getGameDetails(gameName) {
         const data = response.data;
 
         if (data && (data.description_raw || data.description)) {
-            rawDescription = data.description_raw || data.description; // Prioriza description_raw
+            rawDescription = data.description_raw || data.description;
             console.log(`[Game-Info] Descrição em EN da RAWG encontrada.`);
         }
 
         developer = data.developers?.[0]?.name || 'Não informado';
         releaseDate = data.released ? new Date(data.released).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informada';
 
-        // Limpa tags HTML da descrição ANTES de traduzir
-        let cleanDescription = rawDescription.replace(/<[^>]+>/g, ''); // Regex para remover HTML
-        cleanDescription = cleanDescription.replace(/&nbsp;/g, ' ').replace(/\s{2,}/g, ' '); // Limpa &nbsp; e espaços múltiplos
+        let cleanDescription = rawDescription.replace(/<[^>]+>/g, '');
+        cleanDescription = cleanDescription.replace(/&nbsp;/g, ' ').replace(/\s{2,}/g, ' ');
 
-        // Se a descrição (limpa) não for vazia, tenta traduzir
         if (cleanDescription && cleanDescription !== 'Nenhuma descrição disponível.') {
             console.log(`[Game-Info] Tentando traduzir a descrição para PT-BR...`);
             finalDescription = await translateText(cleanDescription, 'pt-BR', 'en');
         } else {
-            finalDescription = cleanDescription; // Usa a descrição limpa se estiver vazia ou for a padrão
+            finalDescription = cleanDescription;
         }
 
-        // Limita a 1020 caracteres APÓS a tradução
-        if (finalDescription.length > 600) {
-            finalDescription = finalDescription.substring(0, 600) + "...";
+        if (finalDescription.length > 1020) {
+            finalDescription = finalDescription.substring(0, 1020) + "...";
         }
 
     } catch (error) {
         console.error(`[Game-Info] Erro ao buscar detalhes para "${gameName}" na API RAWG:`, error.message);
-        // finalDescription já está como 'Nenhuma descrição disponível.'
-        // developer e releaseDate já são 'Não informado(a)'
     }
 
     return {
@@ -368,145 +358,224 @@ async function getGameDetails(gameName) {
     };
 }
 
-
+// AJUSTE: Função getSteamGames revisada e aprimorada
 async function getSteamGames() {
-    try {
-        const steamGames = [];
-        const steamPaths = [
-            path.join(os.homedir(), 'AppData', 'Local', 'Steam'),
-            'C:\\Program Files (x86)\\Steam',
-            'C:\\Program Files\\Steam',
-            'D:\\Steam',
-            'E:\\Steam',
-        ];
-        const userDefinedSteamPath = process.env.STEAM_PATH;
-        if(userDefinedSteamPath && fs.existsSync(userDefinedSteamPath)) {
-            steamPaths.push(userDefinedSteamPath);
-        }
+    const steamGames = [];
+    console.log('[Game-Info] Iniciando busca por jogos da Steam...');
 
-        let steamPath = null;
-        for (const testPath of steamPaths) {
-            try {
-                if (fs.existsSync(testPath)) {
-                    steamPath = testPath;
-                    break;
+    const knownSteamPaths = [
+        'C:\\Program Files (x86)\\Steam',
+        'C:\\Program Files\\Steam',
+    ];
+    // Adiciona caminhos comuns em outras unidades
+    for (let charCode = 'D'.charCodeAt(0); charCode <= 'Z'.charCodeAt(0); charCode++) {
+        const drive = String.fromCharCode(charCode);
+        knownSteamPaths.push(`${drive}:\\SteamLibrary`);
+        knownSteamPaths.push(`${drive}:\\Steam`);
+        knownSteamPaths.push(`${drive}:\\Program Files\\Steam`);
+        knownSteamPaths.push(`${drive}:\\Program Files (x86)\\Steam`);
+    }
+    if (process.env.STEAM_PATH) knownSteamPaths.push(process.env.STEAM_PATH);
+    if (process.env.ProgramFiles) knownSteamPaths.push(path.join(process.env.ProgramFiles, 'Steam'));
+    if (process.env['ProgramFiles(x86)']) knownSteamPaths.push(path.join(process.env['ProgramFiles(x86)'], 'Steam'));
+
+    const uniqueSteamPaths = [...new Set(knownSteamPaths.filter(Boolean))];
+    let mainSteamPath = null;
+    const librarySearchPaths = new Set();
+
+    for (const testPath of uniqueSteamPaths) {
+        try {
+            const steamappsFolder = path.join(testPath, 'steamapps');
+            if (fs.existsSync(steamappsFolder)) {
+                if (!mainSteamPath) { // Prioriza o primeiro caminho principal encontrado
+                    mainSteamPath = testPath;
+                    console.log(`[Game-Info] Pasta principal da Steam (potencial) encontrada em: ${mainSteamPath}`);
                 }
-            } catch (e) { /* Ignora erros de acesso */ }
-        }
-
-        if (!steamPath) {
-            console.log('Steam não encontrada nos caminhos padrão');
-            return [];
-        }
-        const steamappsPath = path.join(steamPath, 'steamapps');
-        if (!fs.existsSync(steamappsPath)) return [];
-
-        const libraryFoldersPath = path.join(steamappsPath, 'libraryfolders.vdf');
-        const librarySearchPaths = [steamappsPath];
-
-        if (fs.existsSync(libraryFoldersPath)) {
-            try {
-                const vdfContent = fs.readFileSync(libraryFoldersPath, 'utf-8');
-                const lines = vdfContent.split('\n');
-                lines.forEach(line => {
-                    const match = line.match(/"path"\s+"([^"]+)"/i);
-                    if (match && match[1]) {
-                        const libPath = match[1].replace(/\\\\/g, '\\');
-                        if (fs.existsSync(libPath) && fs.existsSync(path.join(libPath, 'steamapps'))) {
-                            librarySearchPaths.push(path.join(libPath, 'steamapps'));
-                        }
-                    }
-                });
-            } catch (e) { console.error('Erro ao ler libraryfolders.vdf:', e); }
-        }
-        
-        for (const currentSteamappsPath of [...new Set(librarySearchPaths)]) {
-            const acfFiles = fs.readdirSync(currentSteamappsPath)
-                .filter(file => file.startsWith('appmanifest_') && file.endsWith('.acf'));
-            for (const acfFile of acfFiles) {
-                try {
-                    const acfPath = path.join(currentSteamappsPath, acfFile);
-                    const acfContent = fs.readFileSync(acfPath, 'utf8');
-                    const gameInfo = parseSteamACF(acfContent);
-                    if (gameInfo && gameInfo.name && gameInfo.installdir) {
-                        const gamePath = path.join(currentSteamappsPath, 'common', gameInfo.installdir);
-                        if (fs.existsSync(gamePath)) {
-                            const gameExe = findGameExecutable(gamePath, gameInfo.name);
-                            steamGames.push({
-                                name: gameInfo.name,
-                                path: gameExe || gamePath,
-                                appId: gameInfo.appid,
-                                installDir: gameInfo.installdir,
-                                platform: 'Steam',
-                                type: 'game',
-                                size: await getDirectorySize(gamePath)
-                            });
-                        }
-                    }
-                } catch (error) {
-                    console.error(`Erro ao processar ${acfFile}:`, error);
+                librarySearchPaths.add(steamappsFolder);
+                
+                // Verifica se este é um diretório raiz da Steam e busca por libraryfolders.vdf
+                const vdfPath = path.join(steamappsFolder, 'libraryfolders.vdf');
+                if (fs.existsSync(vdfPath)) {
+                     try {
+                        const vdfContent = fs.readFileSync(vdfPath, 'utf-8');
+                        const lines = vdfContent.split('\n');
+                        lines.forEach(line => {
+                            const match = line.match(/"path"\s+"([^"]+)"/i);
+                            if (match && match[1]) {
+                                const libPath = match[1].replace(/\\\\/g, '\\');
+                                const potentialSteamAppsPath = path.join(libPath, 'steamapps');
+                                if (fs.existsSync(potentialSteamAppsPath)) {
+                                    librarySearchPaths.add(potentialSteamAppsPath);
+                                }
+                            }
+                        });
+                    } catch (e) { console.warn(`[Game-Info] Erro ao ler libraryfolders.vdf em ${vdfPath}: ${e.message}`); }
                 }
             }
-        }
-        return steamGames;
-    } catch (error) {
-        console.error('Erro ao buscar jogos da Steam:', error);
+        } catch (e) { /* Ignora erros de acesso */ }
+    }
+    
+    if (librarySearchPaths.size === 0) {
+         console.warn('[Game-Info] Nenhuma pasta steamapps da Steam foi encontrada.');
         return [];
     }
+    
+    console.log('[Game-Info] Buscando em pastas steamapps:', [...librarySearchPaths]);
+
+    for (const currentSteamAppsPath of librarySearchPaths) {
+        try {
+            const files = fs.readdirSync(currentSteamAppsPath);
+            for (const file of files) {
+                if (file.startsWith('appmanifest_') && file.endsWith('.acf')) {
+                    const filePath = path.join(currentSteamAppsPath, file);
+                    try {
+                        const content = fs.readFileSync(filePath, 'utf-8');
+                        const game = parseSteamACF(content);
+                        if (game && game.name && game.installdir) {
+                            const gameInstallPath = path.join(currentSteamAppsPath, 'common', game.installdir);
+                            if (fs.existsSync(gameInstallPath)) {
+                                const executablePath = await findGameExecutable(gameInstallPath, game.name);
+                                if (executablePath) {
+                                    steamGames.push({
+                                        name: game.name,
+                                        path: executablePath,
+                                        appId: game.appid,
+                                        installDir: game.installdir,
+                                        platform: 'Steam',
+                                        type: 'game',
+                                        size: await getDirectorySize(gameInstallPath)
+                                    });
+                                } else {
+                                     console.warn(`[Game-Info] Executável não encontrado para ${game.name} em ${gameInstallPath}`);
+                                }
+                            } else {
+                                console.warn(`[Game-Info] Pasta de instalação não encontrada para ${game.name}: ${gameInstallPath}`);
+                            }
+                        }
+                    } catch (acfError) {
+                        console.error(`[Game-Info] Erro ao processar arquivo ACF ${file}:`, acfError.message);
+                    }
+                }
+            }
+        } catch(readDirError) {
+            console.error(`[Game-Info] Erro ao ler diretório ${currentSteamAppsPath}:`, readDirError.message);
+        }
+    }
+    
+    // Remover duplicatas por appId, priorizando a que tem path
+    const finalSteamGames = [];
+    const seenAppIds = new Map();
+    for (const game of steamGames) {
+        if (!seenAppIds.has(game.appId) || (game.path && !seenAppIds.get(game.appId).path)) {
+            seenAppIds.set(game.appId, game);
+        }
+    }
+    finalSteamGames.push(...seenAppIds.values());
+
+    console.log(`[Game-Info] Total de ${finalSteamGames.length} jogos da Steam únicos encontrados.`);
+    return finalSteamGames;
 }
 
+// AJUSTE: parseSteamACF revisada para ser mais robusta com regex
 function parseSteamACF(content) {
+    const gameInfo = {};
     try {
-        const gameInfo = {};
-        const appidMatch = content.match(/"appid"\s+"(\d+)"/);
-        const nameMatch = content.match(/"name"\s+"([^"]+)"/);
-        const installdirMatch = content.match(/"installdir"\s+"([^"]+)"/);
+        const appidMatch = content.match(/"appid"\s+"(\d+)"/i);
+        const nameMatch = content.match(/"name"\s+"([^"]+)"/i);
+        const installdirMatch = content.match(/"installdir"\s+"([^"]+)"/i); // Case-insensitive
 
-        if (appidMatch) gameInfo.appid = appidMatch[1];
-        if (nameMatch) gameInfo.name = nameMatch[1];
-        if (installdirMatch) gameInfo.installdir = installdirMatch[1];
+        if (appidMatch && appidMatch[1]) gameInfo.appid = appidMatch[1];
+        if (nameMatch && nameMatch[1]) gameInfo.name = nameMatch[1];
+        if (installdirMatch && installdirMatch[1]) gameInfo.installdir = installdirMatch[1];
         
         return (gameInfo.appid && gameInfo.name && gameInfo.installdir) ? gameInfo : null;
     } catch (error) {
-        console.error('Erro ao fazer parse do ACF:', error);
+        console.error('[Game-Info] Erro ao fazer parse do arquivo ACF:', error);
         return null;
     }
 }
 
+// extractValue não é mais necessária para parseSteamACF, mas pode ser mantida se usada em outro lugar.
+// Se não, pode ser removida. Vou mantê-la por enquanto caso outra parte do seu código original dependa dela.
 function extractValue(line) { 
     const matches = line.match(/"([^"]+)"\s+"([^"]+)"/);
     return matches ? matches[2] : null;
 }
 
-function findGameExecutable(gamePath, gameName) {
+// AJUSTE: findGameExecutable revisada para ser mais robusta
+function findGameExecutable(gameInstallPath, gameName) {
     try {
-        const files = fs.readdirSync(gamePath, { withFileTypes: true });
-        let candidates = [];
-        for (const file of files) {
-            if (file.isFile() && file.name.toLowerCase().endsWith('.exe')) {
-                candidates.push(file.name);
+        const entries = fs.readdirSync(gameInstallPath, { withFileTypes: true });
+        let executables = [];
+
+        function findExesRecursively(currentPath, currentRelativePath = '', depth = 0, maxDepth = 1) {
+            if (depth > maxDepth) return;
+            try {
+                const items = fs.readdirSync(currentPath, { withFileTypes: true });
+                for (const item of items) {
+                    const itemPath = path.join(currentPath, item.name);
+                    const relativeItemPath = path.join(currentRelativePath, item.name);
+                    if (item.isFile() && item.name.toLowerCase().endsWith('.exe')) {
+                        executables.push({ path: itemPath, name: item.name, size: fs.statSync(itemPath).size });
+                    } else if (item.isDirectory() && depth < maxDepth) {
+                        const lowerName = item.name.toLowerCase();
+                        if (!['engine', 'binaries', 'redist', '_commonredist', 'directx', 'vcredist', 'dotnet', 'support'].some(keyword => lowerName.includes(keyword))) {
+                            findExesRecursively(itemPath, relativeItemPath, depth + 1, maxDepth);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn(`[Game-Info] Não foi possível ler o diretório ${currentPath} em findGameExecutable: ${e.message}`);
             }
         }
+        
+        findExesRecursively(gameInstallPath);
 
-        if (candidates.length === 0) return null;
-        if (candidates.length === 1) return path.join(gamePath, candidates[0]);
+        if (executables.length === 0) return null;
+        if (executables.length === 1) return executables[0].path;
 
-        const gameNameLower = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
-        candidates.sort((a, b) => {
-            const aLower = a.toLowerCase();
-            const bLower = b.toLowerCase();
-            if (aLower.includes(gameNameLower)) return -1;
-            if (bLower.includes(gameNameLower)) return 1;
-            if (aLower === "game.exe") return -1;
-            if (bLower === "game.exe") return 1;
-            return 0;
+        const gameNameLowerSimple = gameName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        
+        // Priorizar executáveis com nome similar ao do jogo ou nome da pasta de instalação
+        const installDirNameSimple = path.basename(gameInstallPath).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        executables.sort((a, b) => {
+            const aNameLower = a.name.toLowerCase().replace('.exe', '');
+            const bNameLower = b.name.toLowerCase().replace('.exe', '');
+            let scoreA = 0;
+            let scoreB = 0;
+
+            if (aNameLower === gameNameLowerSimple || aNameLower === installDirNameSimple) scoreA += 10;
+            if (bNameLower === gameNameLowerSimple || bNameLower === installDirNameSimple) scoreB += 10;
+            
+            if (aNameLower.includes(gameNameLowerSimple) || aNameLower.includes(installDirNameSimple)) scoreA += 5;
+            if (bNameLower.includes(gameNameLowerSimple) || bNameLower.includes(installDirNameSimple)) scoreB += 5;
+
+            if (a.name.toLowerCase() === "game.exe") scoreA += 3;
+            if (b.name.toLowerCase() === "game.exe") scoreB += 3;
+            
+            // Menor profundidade (mais próximo da raiz da pasta do jogo) é melhor
+            const depthA = a.path.split(path.sep).length - gameInstallPath.split(path.sep).length;
+            const depthB = b.path.split(path.sep).length - gameInstallPath.split(path.sep).length;
+            if (depthA < depthB) scoreA += 2;
+            if (depthB < depthA) scoreB += 2;
+
+            // Penaliza nomes comuns de launchers de engines ou instaladores
+            if (['ue4game', 'unityplayer', 'crashreportclient', 'launcher', 'setup', 'install'].some(key => aNameLower.includes(key))) scoreA -= 5;
+            if (['ue4game', 'unityplayer', 'crashreportclient', 'launcher', 'setup', 'install'].some(key => bNameLower.includes(key))) scoreB -= 5;
+            
+            if (scoreB !== scoreA) return scoreB - scoreA; // Maior score primeiro
+            return b.size - a.size; // Se scores iguais, maior arquivo primeiro
         });
-        return path.join(gamePath, candidates[0]);
+        
+        return executables.length > 0 ? executables[0].path : null;
+
     } catch (error) {
-        console.error(`Erro ao procurar executável em ${gamePath} para ${gameName}:`, error);
+        console.error(`[Game-Info] Erro ao procurar executável em ${gameInstallPath} para ${gameName}:`, error);
         return null;
     }
 }
+
 
 async function getDirectorySize(dirPath) {
     return new Promise((resolve) => {
@@ -536,17 +605,24 @@ async function getGamesFromAdditionalLibraries(libraryFoldersPath) {
 async function getEpicGames() {
     try {
         const epicGames = [];
-        const launcherInstalledPath = path.join('C:', 'ProgramData', 'Epic', 'UnrealEngineLauncher', 'LauncherInstalled.dat');
-        if (fs.existsSync(launcherInstalledPath)) {
-            const launcherGames = await readLauncherInstalledFile(launcherInstalledPath);
-            epicGames.push(...launcherGames);
-        }
-        const manifestsPath = path.join('C:', 'ProgramData', 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests');
-        if (fs.existsSync(manifestsPath)) {
-            const manifestGames = await readEpicManifests(manifestsPath);
+        const manifestDataPath = path.join(process.env.ProgramData, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests');
+
+        if (fs.existsSync(manifestDataPath)) {
+            const manifestGames = await readEpicManifests(manifestDataPath);
             epicGames.push(...manifestGames);
+        } else {
+             console.warn(`[Game-Info] Pasta de manifestos da Epic não encontrada em: ${manifestDataPath}`);
         }
+        
+        // Tentar o LauncherInstalled.dat se a busca por manifestos não retornar muito
+        const launcherDatPath = path.join(process.env.ProgramData, 'Epic', 'UnrealEngineLauncher', 'LauncherInstalled.dat');
+        if (epicGames.length === 0 && fs.existsSync(launcherDatPath)) {
+             const launcherGames = await readLauncherInstalledFile(launcherDatPath);
+             epicGames.push(...launcherGames);
+        }
+
         const uniqueGames = removeDuplicateGames(epicGames);
+        console.log(`[Game-Info] Total de ${uniqueGames.length} jogos da Epic Games encontrados.`);
         return uniqueGames;
     } catch (error) {
         console.error('Erro ao buscar jogos da Epic Games:', error);
@@ -562,7 +638,7 @@ async function readLauncherInstalledFile(filePath) {
         if (data.InstallationList && Array.isArray(data.InstallationList)) {
             for (const item of data.InstallationList) {
                 try {
-                    if (item.AppName && item.InstallLocation && !item.AppName.includes('UE_') && !item.AppName.includes('UnrealEngine') && item.InstallLocation !== '') {
+                    if (item.AppName && item.InstallLocation && !item.AppName.toLowerCase().includes('unrealengine') && !item.AppName.toLowerCase().startsWith('ue_')) {
                         if (fs.existsSync(item.InstallLocation)) {
                             const gameExe = await findEpicGameExecutable(item.InstallLocation, item.DisplayName || item.AppName);
                             if (gameExe) {
@@ -574,7 +650,7 @@ async function readLauncherInstalledFile(filePath) {
                             }
                         }
                     }
-                } catch (itemError) { console.error('Erro ao processar item da Epic:', itemError); }
+                } catch (itemError) { console.error('Erro ao processar item da Epic (LauncherInstalled.dat):', itemError); }
             }
         }
         return games;
@@ -593,9 +669,9 @@ async function readEpicManifests(manifestsPath) {
                 const manifestPath = path.join(manifestsPath, manifestFile);
                 const content = fs.readFileSync(manifestPath, 'utf8');
                 const manifest = JSON.parse(content);
-                if (manifest.DisplayName && manifest.InstallLocation && manifest.InstallLocation !== '' && !manifest.AppName?.includes('UE_') && !manifest.AppName?.includes('UnrealEngine')) {
+                if (manifest.DisplayName && manifest.InstallLocation && manifest.bIsApplication !== false && !manifest.DisplayName.toLowerCase().includes('unreal engine')) {
                     if (fs.existsSync(manifest.InstallLocation)) {
-                        const gameExe = await findEpicGameExecutable(manifest.InstallLocation, manifest.DisplayName);
+                        const gameExe = await findEpicGameExecutable(manifest.InstallLocation, manifest.DisplayName, manifest.LaunchExecutable);
                         if (gameExe) {
                             games.push({
                                 name: manifest.DisplayName, path: gameExe, appName: manifest.AppName || manifest.CatalogItemId,
@@ -614,8 +690,19 @@ async function readEpicManifests(manifestsPath) {
     }
 }
 
-async function findEpicGameExecutable(gamePath, gameName) {
-    return findGameExecutable(gamePath, gameName);
+async function findEpicGameExecutable(gameInstallPath, gameDisplayName, launchExecutable = null) {
+    try {
+        if (launchExecutable) {
+            const mainExePath = path.join(gameInstallPath, launchExecutable);
+            if (fs.existsSync(mainExePath) && mainExePath.toLowerCase().endsWith('.exe')) {
+                return mainExePath;
+            }
+        }
+        return findGameExecutable(gameInstallPath, gameDisplayName);
+    } catch (error) {
+         console.error(`[Game-Info] Erro ao procurar executável para ${gameDisplayName} (Epic):`, error);
+        return null;
+    }
 }
 
 function removeDuplicateGames(games) {
@@ -747,13 +834,16 @@ function findMainExecutable(executables, folderName, folderPath) {
         if (found) return found;
     }
     let largestSize = 0;
-    let largestExe = executables[0]; 
+    let largestExe = executables.length > 0 ? executables[0] : null; 
     for(const exe of executables){
         try{
-            const stats = fs.statSync(path.join(folderPath, exe));
-            if(stats.size > largestSize){
-                largestSize = stats.size;
-                largestExe = exe;
+            const fullExePath = path.join(folderPath, exe); // Precisa do caminho completo para fs.statSync
+            if (fs.existsSync(fullExePath)) { // Verifica se o arquivo existe
+                const stats = fs.statSync(fullExePath);
+                if(stats.size > largestSize){
+                    largestSize = stats.size;
+                    largestExe = exe;
+                }
             }
         } catch(e){
             console.warn(`Não foi possível obter o tamanho de ${exe} em findMainExecutable: ${e.message}`);
