@@ -6,10 +6,11 @@
 /* Home screen - Menu principal */
 .main-menu {
     display: flex;
-    gap: 80px;
+    gap: 70px; /* Levemente ajustado para um bom espaçamento */
     align-items: center;
     justify-content: center;
     height: 100%;
+    perspective: 1000px; /* Adiciona perspectiva para efeitos 3D sutis */
 }
 
 .menu-item {
@@ -17,18 +18,20 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 240px;
-    height: 240px;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
+    width: 250px; /* Ligeiramente maior para mais impacto */
+    height: 300px; /* Mais retangular, lembrando tiles de console */
+    background: linear-gradient(145deg, rgba(40, 45, 75, 0.7), rgba(25, 28, 50, 0.5));
+    border: 1px solid rgba(100, 120, 200, 0.2);
+    border-radius: 20px; /* Bordas um pouco menos arredondadas */
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(20px);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    backdrop-filter: blur(15px);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+/* Efeito de brilho sutil no fundo do card */
 .menu-item::before {
     content: '';
     position: absolute;
@@ -36,58 +39,86 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
-    transform: translateX(-100%) skewX(-15deg);
-    transition: transform 0.6s ease;
+    background: radial-gradient(circle at 50% 0%, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none; /* Garante que não interfere com o clique */
 }
 
-.menu-item:hover::before {
-    transform: translateX(100%) skewX(-15deg);
+/* Efeito de "varredura" de luz ao passar o mouse/focar (mantido) */
+.menu-item::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.1) 50%, transparent 80%);
+    transform: translateX(-101%);
+    transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1);
 }
+
+.menu-item:hover::after,
+.menu-item.focused::after { /* Adicionado .focused para controle */
+    transform: translateX(101%);
+}
+
 
 .menu-item:hover,
-.menu-item:focus {
-    transform: translateY(-15px) scale(1.05);
+.menu-item:focus, /* Usaremos :focus para o estado de navegação */
+.menu-item.focused { /* E uma classe .focused para controle programático do foco */
+    transform: translateY(-10px) scale(1.03); /* Efeito de "flutuar" mais sutil */
     border-color: #00d4ff;
     box-shadow: 
-        0 25px 50px rgba(0, 212, 255, 0.2),
-        0 0 0 1px rgba(0, 212, 255, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    background: linear-gradient(145deg, rgba(0, 212, 255, 0.1), rgba(0, 150, 200, 0.05));
+        0 20px 40px rgba(0, 0, 0, 0.4), /* Sombra mais pronunciada */
+        0 0 0 2px #00d4ff, /* Borda de foco brilhante */
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    background: linear-gradient(145deg, rgba(0, 212, 255, 0.15), rgba(0, 150, 200, 0.1));
+    outline: none; /* Remove o outline padrão do navegador */
+}
+
+.menu-item:hover::before,
+.menu-item:focus::before,
+.menu-item.focused::before {
+    opacity: 1; /* Mostra o brilho sutil */
 }
 
 .menu-icon {
-    font-size: 56px;
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    font-size: 64px; /* Ícone maior */
+    margin-bottom: 25px;
+    background: linear-gradient(135deg, #00d4ff, #00aaff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.3));
+    text-fill-color: transparent; /* Fallback para navegadores não-webkit */
+    filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.2));
     transition: all 0.3s ease;
 }
 
-.menu-item:hover .menu-icon {
-    filter: drop-shadow(0 0 25px rgba(0, 212, 255, 0.6));
-    transform: scale(1.1);
+.menu-item:hover .menu-icon,
+.menu-item:focus .menu-icon,
+.menu-item.focused .menu-icon {
+    filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.5));
+    transform: scale(1.15);
 }
 
 .menu-text {
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 22px; /* Texto um pouco maior */
+    font-weight: 500; /* Um pouco menos "bold" para um look mais moderno */
     text-transform: uppercase;
-    letter-spacing: 2px;
-    color: #ffffff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    letter-spacing: 1.5px; /* Espaçamento ajustado */
+    color: #f0f0f0; /* Cor ligeiramente mais suave que branco puro */
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
 }
 
-/* Power options */
+/* Power options - Aplicando melhorias similares */
 .power-options {
     display: flex;
-    gap: 80px;
+    gap: 70px;
     align-items: center;
     justify-content: center;
     height: 100%;
+    perspective: 1000px;
 }
 
 .power-option {
@@ -95,16 +126,17 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 200px;
-    height: 200px;
-    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
+    width: 220px; /* Tamanho ajustado */
+    height: 220px;
+    background: linear-gradient(145deg, rgba(40, 45, 75, 0.6), rgba(25, 28, 50, 0.4));
+    border: 1px solid rgba(100, 120, 200, 0.15);
+    border-radius: 20px;
     cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(20px);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    backdrop-filter: blur(15px);
     position: relative;
     overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 }
 
 .power-option::before {
@@ -114,88 +146,114 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
-    transform: translateX(-100%) skewX(-15deg);
-    transition: transform 0.6s ease;
+    background: radial-gradient(circle at 50% 0%, rgba(255, 71, 87, 0.15) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
 }
 
-.power-option:hover::before {
-    transform: translateX(100%) skewX(-15deg);
+.power-option::after { /* Efeito de varredura também para power options */
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.08) 50%, transparent 80%);
+    transform: translateX(-101%);
+    transition: transform 0.65s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.power-option:hover::after,
+.power-option.focused::after {
+    transform: translateX(101%);
 }
 
 .power-option:hover,
-.power-option:focus {
-    transform: translateY(-12px) scale(1.05);
+.power-option:focus,
+.power-option.focused {
+    transform: translateY(-10px) scale(1.03);
     border-color: #ff4757;
     box-shadow: 
-        0 25px 50px rgba(255, 71, 87, 0.2),
-        0 0 0 1px rgba(255, 71, 87, 0.3);
-    background: linear-gradient(145deg, rgba(255, 71, 87, 0.1), rgba(255, 71, 87, 0.05));
+        0 20px 40px rgba(0, 0, 0, 0.4),
+        0 0 0 2px #ff4757, /* Borda de foco brilhante */
+        inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    background: linear-gradient(145deg, rgba(255, 71, 87, 0.15), rgba(255, 50, 60, 0.1));
+    outline: none;
+}
+
+.power-option:hover::before,
+.power-option:focus::before,
+.power-option.focused::before {
+    opacity: 1;
 }
 
 .power-icon {
-    font-size: 52px;
-    margin-bottom: 18px;
-    background: linear-gradient(135deg, #ff4757, #ff3742);
+    font-size: 58px; /* Ícone maior */
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ff4757, #e02f39);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    filter: drop-shadow(0 0 15px rgba(255, 71, 87, 0.3));
+    text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(255, 71, 87, 0.2));
+    transition: all 0.3s ease;
 }
 
-.power-option:hover .power-icon {
-    filter: drop-shadow(0 0 25px rgba(255, 71, 87, 0.6));
-    transform: scale(1.1);
+.power-option:hover .power-icon,
+.power-option:focus .power-icon,
+.power-option.focused .power-icon {
+    filter: drop-shadow(0 0 20px rgba(255, 71, 87, 0.5));
+    transform: scale(1.15);
 }
 
 .power-text {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    color: #ffffff;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    letter-spacing: 1.5px;
+    color: #f0f0f0;
+    text-shadow: 0 1px 5px rgba(0, 0, 0, 0.6);
 }
 
 
-/* Responsive adjustments */
+/* Responsive adjustments (mantidos e podem ser ajustados conforme necessidade) */
 @media (max-width: 1400px) {
-    .main-menu {
-        gap: 60px;
+    .main-menu, .power-options {
+        gap: 50px; /* Ajustado */
     }
     
     .menu-item {
-        width: 200px;
-        height: 200px;
-    }
-    
-    .power-options {
-        gap: 60px;
+        width: 220px; /* Ajustado */
+        height: 270px; /* Ajustado */
     }
     
     .power-option {
-        width: 170px;
-        height: 170px;
+        width: 190px; /* Ajustado */
+        height: 190px; /* Ajustado */
     }
 }
 
 @media (max-width: 1024px) {
-    .main-menu {
-        gap: 40px;
+    .main-menu, .power-options {
+        gap: 30px; /* Ajustado */
+        flex-wrap: wrap; /* Permite que os itens quebrem a linha em telas menores */
+        padding: 20px;
     }
     
     .menu-item {
-        width: 170px;
-        height: 170px;
+        width: 200px; /* Ajustado */
+        height: 250px; /* Ajustado */
     }
-    
-    .menu-icon {
-        font-size: 48px;
+    .menu-icon { font-size: 56px; }
+    .menu-text { font-size: 18px; }
+
+    .power-option {
+        width: 160px;
+        height: 160px;
     }
-    
-    .menu-text {
-        font-size: 16px;
-    }
+    .power-icon { font-size: 48px; }
+    .power-text { font-size: 16px; }
 }
 
 @media (prefers-contrast: high) {
