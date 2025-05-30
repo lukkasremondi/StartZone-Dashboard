@@ -12,7 +12,7 @@ const elements = {
         games: document.getElementById('games-screen'),
         programs: document.getElementById('programs-screen'),
         shutdown: document.getElementById('shutdown-screen'),
-        gameDetails: document.getElementById('game-details-screen') // Adicionado
+        gameDetails: document.getElementById('game-details-screen')
     },
     footerActions: document.getElementById('footer-actions'),
     systemInfo: {
@@ -40,9 +40,8 @@ const elements = {
         programs: document.getElementById('programs-grid')
     },
     buttons: {
-        gamesBack: document.getElementById('games-back'),
-        programsBack: document.getElementById('programs-back'),
-        shutdownBack: document.getElementById('shutdown-back')
+        // Os botões de voltar específicos das telas são tratados
+        // em seus respectivos gerenciadores ou pela função global navigateBack.
     },
     options: {
         games: document.getElementById('games-option'),
@@ -64,15 +63,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.navigateFocus = navigateFocus;
         window.activateFocusedElement = () => document.activeElement?.click();
         window.navigateBack = () => {
-            if (currentScreen === 'game-details-screen') {
+            if (currentScreen === 'gameDetails') {
                 showScreen('games-screen');
+            } else if (currentScreen === 'settingsMenu') { // Se o menu de configurações estiver aberto (lógica futura)
+                window.settingsMenuManager?.closeMenu(); // Tenta fechar o menu
             } else if (currentScreen !== 'home') {
                 showHomeScreen();
             }
         };
         window.showNotification = showNotification;
         window.updateFooterActions = updateFooterActions;
-        window.showDetailsForFocusedGame = showDetailsForFocusedGame; // ADICIONADO
+        window.showDetailsForFocusedGame = showDetailsForFocusedGame; 
+        window.exitApp = exitApp; // Expondo a função exitApp para o settings-menu.js
 
         // Inicialização dos Módulos
         console.log("Main.js: Inicializando módulos de frontend...");
@@ -80,7 +82,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.programsModule.initialize();
         window.gamepadManager = new GamepadManager();
         window.gamepadManager.initialize();
-        window.gameDetailsManager = new GameDetailsManager(); // ADICIONADO
+        window.gameDetailsManager = new GameDetailsManager();
+        window.settingsMenuManager = new SettingsMenuManager(); // ADICIONADO: Inicializa o gerenciador do menu
         console.log("Main.js: Módulos de frontend inicializados com sucesso.");
 
         setupEventListeners();
@@ -103,15 +106,16 @@ function setupEventListeners() {
     if (elements.options.games) elements.options.games.addEventListener('click', () => showGamesScreen());
     if (elements.options.programs) elements.options.programs.addEventListener('click', () => showProgramsScreen());
     if (elements.options.shutdown) elements.options.shutdown.addEventListener('click', () => showShutdownScreen());
-    // Os botões de voltar agora são gerenciados pelo 'navigateBack' e pelo GameDetailsManager
+    
+    // O event listener para o botão de configurações (#settings-button)
+    // é configurado DENTRO da classe SettingsMenuManager (no settings-menu.js)
+
     document.addEventListener('keydown', handleKeyboardNavigation);
     setupFocusHandlers();
 }
 
-// ADIÇÃO: Função "Ponte" para mostrar os detalhes do jogo focado
 function showDetailsForFocusedGame() {
-    // A ação só é válida na tela de jogos
-    if (currentScreen !== 'games') return;
+    if (currentScreen !== 'games') return; 
 
     const focusedElement = document.activeElement;
     if (!focusedElement || !focusedElement.classList.contains('game-item')) {
@@ -126,8 +130,7 @@ function showDetailsForFocusedGame() {
     }
 
     try {
-        const gamePath = atob(gameId); // Decodifica o ID para obter o caminho
-        // Procura o jogo no cache que agora está dentro do gamesManager
+        const gamePath = atob(gameId); 
         const game = window.gamesManager.cachedGames.find(g => g.path === gamePath);
 
         if (game && window.gameDetailsManager) {
@@ -136,40 +139,44 @@ function showDetailsForFocusedGame() {
             console.error('Não foi possível encontrar o jogo no cache para o ID:', gameId);
         }
     } catch (e) {
-        console.error("Erro ao decodificar gameId:", e);
+        console.error("Erro ao decodificar gameId ou mostrar detalhes:", e);
     }
 }
 
-
-// AJUSTE: A função agora mostra a dica de "Detalhes"
 function updateFooterActions() {
     const container = elements.footerActions;
     if (!container) return;
 
     const isConnected = window.gamepadManager?.isConnected || false;
+    const menuOpen = window.settingsMenuManager?.isMenuOpen || false;
 
-    // Define as ações disponíveis para cada tela
-    const actions = {
+    let actions = {
         confirm: { enabled: true, label: 'Confirmar' },
-        back: { enabled: currentScreen !== 'home', label: 'Voltar' },
-        details: { enabled: currentScreen === 'games', label: 'Detalhes' }
+        back: { enabled: currentScreen !== 'home' || menuOpen, label: 'Voltar' }, // Botão B também fecha o menu
+        details: { enabled: currentScreen === 'games' && !menuOpen, label: 'Detalhes' }
     };
+
+    // Se o menu de configurações estiver aberto, as ações do rodapé mudam
+    if (menuOpen) {
+        actions = {
+            confirm: { enabled: true, label: 'Selecionar' }, // Se houver itens no menu
+            back: { enabled: true, label: 'Fechar Menu' },
+            details: {enabled: false } // Sem "Detalhes" quando o menu está aberto
+        };
+    }
     
     let hintsHTML = '';
 
-    // Dica de Detalhes (Y / Espaço)
     if (actions.details.enabled) {
         const key = isConnected ? `<div class="action-button button-y">Y</div>` : `<div class="key-hint">Espaço</div>`;
         hintsHTML += `<div class="action-hint">${key}<span>${actions.details.label}</span></div>`;
     }
 
-    // Dica de Confirmar (A / Enter)
     if (actions.confirm.enabled) {
         const key = isConnected ? `<div class="action-button button-a">A</div>` : `<div class="key-hint">Enter</div>`;
         hintsHTML += `<div class="action-hint">${key}<span>${actions.confirm.label}</span></div>`;
     }
 
-    // Dica de Voltar (B / Esc)
     if (actions.back.enabled) {
         const key = isConnected ? `<div class="action-button button-b">B</div>` : `<div class="key-hint">Esc</div>`;
         hintsHTML += `<div class="action-hint">${key}<span>${actions.back.label}</span></div>`;
@@ -179,25 +186,26 @@ function updateFooterActions() {
 }
 
 // Gerenciamento de Telas
-function showScreen(screenName) {
+function showScreen(screenId) { 
     Object.values(elements.screens).forEach(screen => {
         if (screen) screen.classList.remove('active');
     });
 
-    const targetScreen = document.getElementById(screenName);
+    const targetScreen = document.getElementById(screenId); 
     if (targetScreen) {
         targetScreen.classList.add('active');
-        // Atualiza o estado da tela atual com o nome da chave do objeto `elements.screens`
         currentScreen = Object.keys(elements.screens).find(key => elements.screens[key] === targetScreen) || 'home';
         
         updateFooterActions();
         setTimeout(() => focusFirstElement(), 100);
+    } else {
+        console.error(`Tela com ID "${screenId}" não encontrada.`);
     }
 }
 
 function setupFocusHandlers() {
     document.body.addEventListener('focusin', (e) => {
-        const target = e.target.closest('.menu-item, .game-item, .program-item, .power-option, .back-button, button');
+        const target = e.target.closest('.menu-item, .game-item, .program-item, .power-option, .back-button, button, .settings-menu-item, .close-button');
         if (target) {
             document.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
             target.classList.add('focused');
@@ -205,9 +213,15 @@ function setupFocusHandlers() {
     });
 }
 
-// AJUSTE: Ação do 'Espaço' foi movida para o games.js, aqui ele só confirma.
 function handleKeyboardNavigation(event) {
     if (isLoading) return;
+    // Se o menu de configurações estiver aberto, permite que ele trate o Escape primeiro
+    if (event.key === 'Escape' && window.settingsMenuManager?.isMenuOpen) {
+        window.settingsMenuManager.closeMenu();
+        event.preventDefault();
+        return;
+    }
+
     switch(event.key) {
         case 'Escape': case 'Backspace':
             if (window.navigateBack) window.navigateBack();
@@ -217,10 +231,8 @@ function handleKeyboardNavigation(event) {
             event.preventDefault();
             break;
         case ' ':
-             // A ação do Espaço agora é tratada contextualmente nos módulos (ex: games.js)
-             // ou pode acionar a ação de detalhes se quisermos
             const focused = document.activeElement;
-            if (focused && focused.classList.contains('game-item')) {
+            if (focused && focused.classList.contains('game-item') && currentScreen === 'games') {
                 if(window.showDetailsForFocusedGame) window.showDetailsForFocusedGame();
             } else {
                 if (window.activateFocusedElement) window.activateFocusedElement();
@@ -238,40 +250,61 @@ function navigateFocus(direction) {
     const focusableElements = getFocusableElements();
     if (focusableElements.length === 0) return;
     let currentIndex = focusableElements.findIndex(el => el === document.activeElement);
-    if (currentIndex === -1) {
+    if (currentIndex === -1 && focusableElements.length > 0) {
         focusableElements[0].focus();
         return;
     }
+    
     let newIndex = currentIndex;
     const currentItem = focusableElements[currentIndex];
-    const grid = currentItem.closest('.content-grid');
-    if (grid && (currentScreen === 'games' || currentScreen === 'programs')) {
-        const style = window.getComputedStyle(grid);
-        const columns = style.getPropertyValue('grid-template-columns').split(' ').length;
-        switch(direction) {
-            case 'up': newIndex = currentIndex - columns; break;
-            case 'down': newIndex = currentIndex + columns; break;
-            case 'left': if (currentIndex % columns !== 0) newIndex = currentIndex - 1; break;
-            case 'right': if ((currentIndex + 1) % columns !== 0 && (currentIndex + 1) < focusableElements.length) newIndex = currentIndex + 1; break;
-        }
+    
+    // Se o menu de configurações estiver aberto, a navegação é vertical simples
+    if (window.settingsMenuManager?.isMenuOpen) {
+        if (direction === 'up') newIndex = currentIndex - 1;
+        else if (direction === 'down') newIndex = currentIndex + 1;
     } else {
-         switch(direction) {
-            case 'up': case 'left': newIndex = currentIndex - 1; break;
-            case 'down': case 'right': newIndex = currentIndex + 1; break;
+        const grid = currentItem?.closest('.content-grid');
+        if (grid && (currentScreen === 'games' || currentScreen === 'programs')) {
+            const style = window.getComputedStyle(grid);
+            const columns = style.getPropertyValue('grid-template-columns').split(' ').length;
+            switch(direction) {
+                case 'up': newIndex = currentIndex - columns; break;
+                case 'down': newIndex = currentIndex + columns; break;
+                case 'left': if (currentIndex % columns !== 0) newIndex = currentIndex - 1; break;
+                case 'right': if ((currentIndex + 1) % columns !== 0 && (currentIndex + 1) < focusableElements.length) newIndex = currentIndex + 1; break;
+            }
+        } else {
+             switch(direction) {
+                case 'up': case 'left': newIndex = currentIndex - 1; break;
+                case 'down': case 'right': newIndex = currentIndex + 1; break;
+            }
         }
     }
+
     if (newIndex >= 0 && newIndex < focusableElements.length) {
         focusableElements[newIndex].focus();
+    } else if (direction === 'up' && newIndex < 0) {
+        focusableElements[focusableElements.length - 1].focus();
+    } else if (direction === 'down' && newIndex >= focusableElements.length) {
+        focusableElements[0].focus();
     }
 }
 
 function getFocusableElements() {
-    const currentScreenElement = elements.screens[currentScreen];
-    if (!currentScreenElement) return [];
-    return Array.from(currentScreenElement.querySelectorAll(
-        '.menu-item, .game-item, .program-item, .power-option, .back-button, button'
-    )).filter(el => {
-        return el.offsetParent !== null && !el.disabled && !el.classList.contains('hidden');
+    let currentActiveScreenElement;
+    if (window.settingsMenuManager?.isMenuOpen) {
+        currentActiveScreenElement = document.getElementById('settings-menu');
+    } else {
+        currentActiveScreenElement = elements.screens[currentScreen];
+    }
+
+    if (!currentActiveScreenElement) return [];
+    
+    // Seletores para elementos focáveis
+    const selectors = '.menu-item, .game-item, .program-item, .power-option, .back-button, button, .settings-menu-item, .close-button, #settings-button';
+    
+    return Array.from(currentActiveScreenElement.querySelectorAll(selectors)).filter(el => {
+        return el.offsetParent !== null && !el.disabled && !el.classList.contains('hidden') && el.tabIndex !== -1;
     });
 }
 
@@ -415,7 +448,7 @@ async function exitApp() {
             await ipcRenderer.invoke('exit-startzone');
         } catch (error) {
             console.error('Erro ao sair:', error);
-            window.close();
+            window.close(); // Fallback se o IPC falhar
         }
     }
 }
@@ -475,6 +508,7 @@ function showNotification(message, type = 'info') {
 
 function confirmAction(message) {
     return new Promise((resolve) => {
+        // Substituir por um modal customizado se quiser um visual mais integrado
         const result = confirm(message);
         resolve(result);
     });

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="css/games.css">
     <link rel="stylesheet" href="css/programs.css">
     <link rel="stylesheet" href="css/games-details.css"> 
+    <link rel="stylesheet" href="css/menu.css">
 </head>
 <body>
     <header id="system-header">
@@ -37,11 +38,31 @@
                 <span id="audio-volume">--%</span>
             </div>
         </div>
-        <div class="datetime-info">
-            <div id="current-time">--:--</div>
-            <div id="current-date">-- / -- / ----</div>
+        <div class="header-right-controls"> 
+            <div class="datetime-info">
+                <div id="current-time">--:--</div>
+                <div id="current-date">-- / -- / ----</div>
+            </div>
+            <div id="settings-button" class="settings-icon-button" tabindex="0" role="button" aria-label="Configurações">
+                ⚙️
+            </div>
         </div>
     </header>
+
+    <aside id="settings-menu" class="settings-menu-panel">
+        <div class="settings-menu-header">
+            <h2>Configurações</h2>
+            <button id="close-settings-menu" class="close-button" aria-label="Fechar menu de configurações">&times;</button>
+        </div>
+        <nav class="settings-menu-nav">
+            </nav>
+        <div class="settings-menu-footer">
+            <button id="settings-exit-dashboard" class="settings-menu-item exit-option">
+                Sair do Dashboard
+            </button>
+        </div>
+    </aside>
+    <div id="settings-menu-overlay" class="settings-menu-overlay-backdrop"></div>
 
     <main id="main-content">
         <div id="home-screen" class="screen active">
@@ -128,7 +149,7 @@
                     <div class="details-section">
                         <h2>Sobre o Jogo</h2>
                         <p id="details-summary">
-                            </p>
+                        </p>
                     </div>
                     <div class="details-section">
                         <h2>Informações</h2>
@@ -183,8 +204,9 @@
     <script src="js/programs.js"></script>
     <script src="js/games.js"></script>
     <script src="js/games-details.js"></script>
+    <script src="js/menu.js"></script> 
     <script src="js/gamepad.js"></script>
-    <script src="js/navigation.js"></script>
+    <script src="js/navigation.js"></script> 
     <script src="js/main.js"></script>
 </body>
 </html>

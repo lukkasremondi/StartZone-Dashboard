@@ -1,0 +1,149 @@
+/* Estilos para o Menu Lateral de Configurações */
+
+/* Ícone de Configurações no Header */
+.settings-icon-button {
+    font-size: 28px; /* Tamanho do ícone de engrenagem */
+    color: #a0a0a0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 10px;
+    margin-left: 20px; /* Espaço entre a hora e o ícone */
+    transition: color 0.3s ease, transform 0.3s ease;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.settings-icon-button:hover,
+.settings-icon-button:focus {
+    color: #00d4ff;
+    transform: rotate(90deg);
+    outline: none; /* O foco padrão pode ser gerenciado pelo main.css global */
+}
+
+/* Painel do Menu Lateral */
+.settings-menu-panel {
+    position: fixed;
+    top: 0;
+    right: -400px; /* Começa fora da tela */
+    width: 400px;
+    height: 100vh;
+    background: linear-gradient(160deg, rgba(10, 15, 30, 0.95) 0%, rgba(5, 8, 20, 0.98) 100%);
+    backdrop-filter: blur(25px);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+    z-index: 1500; /* Acima do conteúdo principal, mas abaixo de overlays de loading/notificação se necessário */
+    transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    color: #ffffff;
+}
+
+.settings-menu-panel.open {
+    right: 0; /* Desliza para dentro da tela */
+}
+
+/* Fundo escurecido quando o menu está aberto */
+.settings-menu-overlay-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, visibility 0.4s ease;
+    z-index: 1499; /* Abaixo do painel do menu */
+}
+
+.settings-menu-overlay-backdrop.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* Cabeçalho do Menu Lateral */
+.settings-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-menu-header h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #00d4ff;
+}
+
+.close-button {
+    font-size: 32px;
+    color: #a0a0a0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.3s ease, transform 0.3s ease;
+    padding: 5px;
+    line-height: 1;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: #ffffff;
+    transform: scale(1.2);
+    outline: none;
+}
+
+/* Navegação/Conteúdo do Menu (será preenchido depois) */
+.settings-menu-nav {
+    flex-grow: 1;
+    padding: 20px 30px;
+    overflow-y: auto;
+}
+
+/* Estilo para itens futuros do menu de configurações */
+.settings-menu-item {
+    display: block;
+    width: 100%;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #e0e0e0;
+    text-align: left;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.settings-menu-item:hover,
+.settings-menu-item:focus {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: #00d4ff;
+    color: #00d4ff;
+    outline: none;
+}
+
+/* Rodapé do Menu Lateral */
+.settings-menu-footer {
+    padding: 20px 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.settings-menu-footer .exit-option {
+    background-color: rgba(255, 71, 87, 0.15);
+    border-color: rgba(255, 71, 87, 0.4);
+    color: #ff4757;
+}
+
+.settings-menu-footer .exit-option:hover,
+.settings-menu-footer .exit-option:focus {
+    background-color: rgba(255, 71, 87, 0.3);
+    border-color: #ff4757;
+    color: #ffffff;
+}
