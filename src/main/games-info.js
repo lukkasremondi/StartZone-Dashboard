@@ -302,21 +302,47 @@ function getGamesSummary(games) {
     return summary;
 }
 
-async function launchGame(game) {
-    return new Promise((resolve, reject) => {
-        if (!game || !game.path) return reject(new Error('Caminho do jogo não encontrado'));
-        const pathToLaunch = game.path;
-        console.log(`Iniciando jogo: ${game.name} em ${pathToLaunch}`);
-        exec(`"${pathToLaunch}"`, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Erro ao iniciar ${game.name}:`, error);
-                reject(error);
-            } else {
-                console.log(`${game.name} iniciado com sucesso`);
-                resolve(stdout);
+async function launchGame(game, mainWindow) {
+    if (!game || !game.path) {
+        return { success: false, message: "Caminho do jogo não fornecido." };
+    }
+
+    console.log(`[Game-Info] Tentando iniciar: ${game.name}`);
+    
+    try {
+        const gameProcess = exec(`"${game.path}"`, { cwd: path.dirname(game.path) });
+
+        // Evento disparado quando o processo do jogo começa
+        gameProcess.on('spawn', () => {
+            console.log(`[Game-Info] ${game.name} iniciado. Enviando evento 'game-started'...`);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('game-started', game);
             }
         });
-    });
+
+        // Evento disparado quando o usuário fecha o jogo
+        gameProcess.on('close', (code) => {
+            console.log(`[Game-Info] ${game.name} fechado (código: ${code}). Enviando evento 'game-stopped'...`);
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('game-stopped', game);
+            }
+        });
+
+        // Evento para erros durante a execução
+        gameProcess.on('error', (err) => {
+            console.error(`[Game-Info] Erro durante a execução de ${game.name}:`, err);
+            // Também envia um evento de 'stop' em caso de erro
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('game-stopped', game);
+            }
+        });
+
+        return { success: true };
+
+    } catch (error) {
+        console.error(`[Game-Info] Falha ao executar o processo do jogo ${game.name}:`, error);
+        return { success: false, message: error.message };
+    }
 }
 
 async function getSteamGames() {

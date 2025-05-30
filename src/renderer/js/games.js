@@ -40,7 +40,6 @@ class GamesManager {
         this.currentFilter = 'all';
         this.searchTerm = '';
         this.isLoading = false;
-        // O cache de capas do frontend não é mais necessário, foi removido.
         this.init();
     }
 
@@ -48,6 +47,13 @@ class GamesManager {
         this.bindEvents();
         this.createSearchInterface();
         this.createFilterInterface();
+
+        // ADIÇÃO: Configura os listeners para os eventos de estado do jogo
+        if (window.electronAPI) {
+            window.electronAPI.onGameStarted((game) => this.setGameState(game, true));
+            window.electronAPI.onGameStopped((game) => this.setGameState(game, false));
+            console.log("GamesManager: Listeners de estado de jogo configurados.");
+        }
     }
 
     bindEvents() {
@@ -55,11 +61,8 @@ class GamesManager {
         if (backButton) {
             backButton.addEventListener('click', () => this.goBack());
         }
-        document.addEventListener('screenChanged', (e) => {
-            if (e.detail.screen === 'games-screen') {
-                this.loadGames();
-            }
-        });
+        // O listener de 'screenChanged' foi removido para evitar chamadas duplicadas,
+        // já que o main.js agora chama loadGames() diretamente.
     }
 
     createSearchInterface() {
@@ -141,12 +144,11 @@ class GamesManager {
         let filtered = [...cachedGames];
 
         if (this.currentFilter !== 'all') {
-             const platformMap = {
+            const platformMap = {
                 'steam': 'Steam',
                 'epic': 'Epic Games',
                 'other': 'Local Games'
             };
-            // Filtra pela plataforma exata retornada pelo backend
             filtered = filtered.filter(game => (game.platform || '').toLowerCase().includes(platformMap[this.currentFilter].toLowerCase()));
         }
 
@@ -163,7 +165,7 @@ class GamesManager {
         const backendPlatform = game.platform ? game.platform.toLowerCase() : 'other';
         if (backendPlatform.includes('steam')) return 'steam';
         if (backendPlatform.includes('epic')) return 'epic';
-        return 'other'; // Mapeia "Local Games" e outros para "other"
+        return 'other';
     }
 
     renderGames() {
@@ -179,22 +181,27 @@ class GamesManager {
 
         gamesGrid.innerHTML = '';
         for (const game of sortedGames) {
-            // A criação do elemento agora é síncrona, pois não há mais 'await'
             const gameElement = this.createGameElement(game);
             gamesGrid.appendChild(gameElement);
         }
     }
 
     createGameElement(game) {
-
-        console.log('Objeto Game no Frontend:', game);
         const gameDiv = document.createElement('div');
         gameDiv.className = 'game-item';
         gameDiv.setAttribute('tabindex', '0');
+
+        // AJUSTE: Adiciona um identificador único para podermos encontrar este elemento depois
+        if (game.path) {
+            try {
+                gameDiv.dataset.gameId = btoa(game.path);
+            } catch (e) {
+                // Fallback para nomes de arquivos
+                gameDiv.dataset.gameId = game.path.replace(/[^a-zA-Z0-9]/g, '');
+            }
+        }
         
-        // LÓGICA SIMPLIFICADA: Usa diretamente o coverPath vindo do backend
         const coverUrl = game.coverPath; 
-        
         const platform = this.detectGamePlatform(game);
         const platformIcon = this.getPlatformIcon(platform);
         const sizeText = game.size || 'N/A';
@@ -237,9 +244,8 @@ class GamesManager {
             this.showNotification('Erro: Caminho do jogo não encontrado', 'error');
             return;
         }
-        this.showNotification(`Iniciando ${game.name}...`, 'info');
+        // Não mostra a notificação de 'Iniciando...' aqui, pois o overlay já é um feedback.
         try {
-            // A função `launchGame` do backend agora recebe o objeto `game` inteiro
             await window.electronAPI.launchGame(game);
         } catch (error) {
             console.error('Erro ao executar jogo:', error);
@@ -272,10 +278,32 @@ class GamesManager {
             console.log(`[${type.toUpperCase()}] ${message}`);
         }
     }
+
+    // ADIÇÃO: Nova função para gerenciar o estado visual do jogo
+    setGameState(game, isRunning) {
+        if (!game || !game.path) return;
+        
+        console.log(`GamesManager: Atualizando estado de '${game.name}' para ${isRunning ? 'Em Execução' : 'Parado'}`);
+        
+        let gameId;
+        try {
+            gameId = btoa(game.path);
+        } catch (e) {
+            gameId = game.path.replace(/[^a-zA-Z0-9]/g, '');
+        }
+
+        const gameElement = document.querySelector(`.game-item[data-game-id="${gameId}"]`);
+
+        if (gameElement) {
+            if (isRunning) {
+                gameElement.classList.add('is-running');
+            } else {
+                gameElement.classList.remove('is-running');
+            }
+        }
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.gamesManager = new GamesManager();
-    // A busca inicial de jogos é disparada quando a tela de jogos é exibida.
-    // fetchAndCacheGames().catch(error => console.error('Erro na busca inicial de jogos:', error));
+    // A inicialização do GamesManager agora é feita pelo main.js para garantir a ordem correta.
 });

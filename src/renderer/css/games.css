@@ -239,3 +239,37 @@
     background-color: #00d4ff;
     transform: scale(1.1);
 }
+
+.game-item.is-running .game-cover::after {
+    content: 'Em Execução';
+    position: absolute;
+    inset: 0; /* Ocupa todo o espaço do .game-cover */
+    background-color: rgba(0, 150, 200, 0.75);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    backdrop-filter: blur(4px); /* Efeito de vidro fosco */
+    z-index: 3; /* Garante que fique por cima de outros overlays */
+    border-radius: 12px 12px 0 0; /* Acompanha o raio da borda do card */
+    animation: fadeIn 0.3s ease;
+}
+
+/* Desativa os efeitos de hover quando um jogo está rodando */
+.game-item.is-running {
+    cursor: default;
+}
+
+.game-item.is-running:hover {
+    transform: none; /* Remove o efeito de escalar/subir */
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Esconde o botão de "Play" quando o jogo já está rodando */
+.game-item.is-running .game-cover-overlay {
+    display: none;
+}

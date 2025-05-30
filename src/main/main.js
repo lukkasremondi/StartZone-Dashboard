@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const { exec, execFile } = require('child_process');
 
-// AJUSTE: Importar os novos módulos separados
+// Importar os novos módulos separados
 const systemInfo = require('./system-info');
 const gamesInfo = require('./games-info.js');
 const programsInfo = require('./programs-info.js');
@@ -55,7 +55,6 @@ function createMainWindow() {
 // IPC Handlers para informações do sistema
 ipcMain.handle('get-system-info', async () => {
   try {
-    // Nenhuma alteração aqui, a função continua em system-info
     const info = await systemInfo.getAllSystemInfo();
     console.log('Informações do sistema obtidas com sucesso');
     return info;
@@ -71,7 +70,6 @@ ipcMain.handle('launch-program', async (event, programPath) => {
     console.error('Caminho do programa não fornecido');
     return false;
   }
-
   try {
     execFile(programPath, [], { shell: true }, (error) => {
       if (error) {
@@ -91,14 +89,11 @@ ipcMain.handle('launch-program', async (event, programPath) => {
 ipcMain.handle('get-installed-programs', async () => {
   try {
     console.log('Obtendo programas instalados...');
-    // AJUSTE: Chamar a função do módulo 'programs-info'
     const programs = await programsInfo.getInstalledPrograms();
     console.log(`Total de programas encontrados: ${programs.length}`);
-    
     const filteredPrograms = programs.filter(program => 
       program && program.name && program.name.trim() !== ''
     );
-    
     console.log(`Programas após filtro: ${filteredPrograms.length}`);
     return filteredPrograms;
   } catch (error) {
@@ -110,7 +105,6 @@ ipcMain.handle('get-installed-programs', async () => {
 // IPC Handlers para jogos
 ipcMain.handle('get-installed-games', async () => {
   try {
-    // AJUSTE: Chamar a função do módulo 'games-info'
     const games = await gamesInfo.getInstalledGames();
     console.log(`Jogos encontrados: ${games.length}`);
     return games;
@@ -120,25 +114,23 @@ ipcMain.handle('get-installed-games', async () => {
   }
 });
 
-ipcMain.handle('launch-game', async (event, gamePath) => {
+ipcMain.handle('launch-game', async (event, game) => {
   try {
-    if (!gamePath) {
-      throw new Error('Caminho do jogo não fornecido');
+    if (!game || !game.path) {
+      throw new Error('Objeto do jogo ou caminho não fornecido');
     }
-
-    console.log(`Iniciando jogo: ${gamePath}`);
-    // AJUSTE: Chamar a função do módulo 'games-info'
-    const result = await gamesInfo.launchGame({ path: gamePath });
-    return { success: true, message: 'Jogo iniciado com sucesso', result };
+    // Passa o objeto 'game' e a 'mainWindow' para a função
+    const result = await gamesInfo.launchGame(game, mainWindow); 
+    return result;
   } catch (error) {
-    console.error('Erro ao iniciar jogo:', error);
+    console.error('Erro ao iniciar jogo no main.js:', error.message);
     return { success: false, message: error.message || 'Falha ao iniciar jogo' };
   }
 });
 
+
 ipcMain.handle('get-games-summary', async () => {
   try {
-    // AJUSTE: Chamar as funções do módulo 'games-info'
     const games = await gamesInfo.getInstalledGames();
     const summary = gamesInfo.getGamesSummary(games);
     return summary;
@@ -155,7 +147,6 @@ ipcMain.handle('get-games-summary', async () => {
 
 ipcMain.handle('search-games', async (event, searchTerm) => {
   try {
-    // AJUSTE: Chamar as funções do módulo 'games-info'
     const games = await gamesInfo.getInstalledGames();
     const filteredGames = gamesInfo.searchGamesByName(games, searchTerm);
     return filteredGames;
@@ -167,7 +158,6 @@ ipcMain.handle('search-games', async (event, searchTerm) => {
 
 ipcMain.handle('get-games-by-platform', async (event, platform) => {
   try {
-    // AJUSTE: Chamar as funções do módulo 'games-info'
     const games = await gamesInfo.getInstalledGames();
     const platformGames = gamesInfo.getGamesByPlatform(games, platform);
     return platformGames;
@@ -177,10 +167,9 @@ ipcMain.handle('get-games-by-platform', async (event, platform) => {
   }
 });
 
-ipcMain.handle('add-game-to-startzone', async (event, { name, path: gamePath }) => {
+ipcMain.handle('add-game-to-startzone', async (event, gameDetails) => {
   try {
-    // AJUSTE: Chamar a função do módulo 'games-info'
-    const success = await gamesInfo.addGameToStartZone(name, gamePath);
+    const success = await gamesInfo.addGameToStartzone(gameDetails);
     return { success, message: success ? 'Jogo adicionado à StartZone' : 'Falha ao adicionar jogo' };
   } catch (error) {
     console.error('Erro ao adicionar jogo à StartZone:', error);
@@ -190,7 +179,6 @@ ipcMain.handle('add-game-to-startzone', async (event, { name, path: gamePath }) 
 
 ipcMain.handle('ensure-startzone-folder', async () => {
   try {
-    // AJUSTE: Chamar a função do módulo 'games-info'
     const folderPath = await gamesInfo.ensureStartZoneGamesFolder();
     return { success: !!folderPath, path: folderPath };
   } catch (error) {
@@ -242,16 +230,13 @@ function extractIcon(exePath, size = 32) {
     if (!exePath || !fs.existsSync(exePath)) {
       return resolve(null);
     }
-
     const tempIconPath = path.join(os.tmpdir(), `temp_icon_${Date.now()}.ico`);
     const cmd = `powershell -Command "$src='${exePath}'; $dst='${tempIconPath}'; Add-Type -AssemblyName System.Drawing; [System.Drawing.Icon]::ExtractAssociatedIcon($src).ToBitmap().Save($dst)"`;
-
     exec(cmd, { timeout: 5000 }, (error) => {
       if (error) {
         console.error('Erro ao extrair ícone:', error);
         return resolve(null);
       }
-
       try {
         if (fs.existsSync(tempIconPath)) {
           const icon = nativeImage.createFromPath(tempIconPath);
@@ -271,7 +256,6 @@ function extractIcon(exePath, size = 32) {
 ipcMain.handle('get-program-icon', async (event, exePath) => {
   try {
     if (!exePath) return null;
-    
     const icon = await extractIcon(exePath);
     return icon ? icon.toDataURL() : null;
   } catch (error) {
@@ -283,7 +267,6 @@ ipcMain.handle('get-program-icon', async (event, exePath) => {
 ipcMain.handle('get-game-icon', async (event, exePath) => {
   try {
     if (!exePath) return null;
-    
     const icon = await extractIcon(exePath, 64); // Ícone maior para jogos
     return icon ? icon.toDataURL() : null;
   } catch (error) {
@@ -295,13 +278,11 @@ ipcMain.handle('get-game-icon', async (event, exePath) => {
 // Inicialização da aplicação
 app.whenReady().then(() => {
   createMainWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
     }
   });
-
   if (process.platform === 'win32') {
     app.setLoginItemSettings({
       openAtLogin: false,
@@ -318,7 +299,6 @@ app.on('window-all-closed', () => {
 
 // Gerenciamento de instância única
 const gotTheLock = app.requestSingleInstanceLock();
-
 if (!gotTheLock) {
   app.quit();
 } else {
